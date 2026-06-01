@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Internship Attendance - Beta | Medical College</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #1e3c72;
+            --border: #ccc;
+            --btn-primary: #2c7da0;
+            --btn-primary-hover: #1f5068;
+            --btn-success: #27ae60;
+            --btn-warning: #e67e22;
+            --btn-danger: #e74c3c;
+            --fundraiser-bg: #fff3e0;
+            --modal-overlay: rgba(0,0,0,0.5);
+        }
+        body.dark {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text: #e0e0e0;
+            --border: #2c3e50;
+            --btn-primary: #0f3460;
+            --btn-primary-hover: #1a4a7a;
+            --fundraiser-bg: #2a2a1c;
+            --modal-overlay: rgba(0,0,0,0.7);
+        }
+        body {
+            background: var(--bg);
+            margin: 0;
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+            color: var(--text);
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: background 0.3s; }
+        h1, h2, h3 { margin-top: 0; color: var(--text); }
+        .punch-buttons, .action-buttons { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
+        button { background: var(--btn-primary); color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: var(--btn-primary-hover); }
+        .leave-status, .streak-card, .countdown-card { background: rgba(46, 204, 113, 0.1); padding: 15px; border-radius: 16px; margin: 15px 0; border-left: 6px solid #2c7da0; }
+        .danger { background: rgba(231, 76, 60, 0.2); border-left-color: #e74c3c; color: #e74c3c; font-weight: bold; }
+        .danger-zone { background: #ff4444; color: white; padding: 12px; border-radius: 12px; text-align: center; font-size: 1.3rem; margin-top: 10px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { background: #ff4444; } 50% { background: #ff7777; } 100% { background: #ff4444; } }
+        input, select, textarea { padding: 10px; font-size: 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); margin-right: 10px; width: auto; }
+        textarea { width: 100%; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 16px; overflow: auto; display: block; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+        th { background: var(--btn-primary); color: white; }
+        .export-btn, .import-btn { background: var(--btn-success); margin-top: 10px; margin-right: 10px; }
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px; }
+        canvas { max-height: 300px; margin: 20px 0; background: var(--card-bg); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 40px; z-index: 1000; font-size: 14px; }
+        @media (max-width: 600px) { body { padding: 12px; } button { padding: 8px 16px; font-size: 14px; } }
+        footer { text-align: center; background: var(--btn-primary); color: white; padding: 15px; border-radius: 20px; margin-top: 10px; }
+        .test-bar { background: rgba(241, 196, 15, 0.2); border-radius: 40px; padding: 8px 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; justify-content: space-between; font-size: 14px; margin-bottom: 20px; }
+        .test-bar label { font-weight: normal; margin: 0 5px; }
+        .test-bar select, .test-bar button { padding: 5px 12px; font-size: 14px; }
+        .hidden { display: none; }
+        .streak-badge { font-size: 1.4rem; font-weight: bold; color: #e67e22; }
+        .reward-message { background: #f9e79f; padding: 8px; border-radius: 20px; display: inline-block; margin-top: 5px; color: #333; }
+        .progress-bar { width: 100%; background: #ddd; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .progress-fill { background: #2ecc71; height: 20px; width: 0%; border-radius: 10px; transition: width 0.3s; }
+        .control-buttons { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .control-btn { background: var(--btn-primary); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 24px; border: none; color: white; }
+        .search-box { margin-bottom: 15px; }
+        .search-box input { width: 100%; max-width: 300px; }
+        .clear-data-btn { background: var(--btn-danger); }
+        .fundraiser-card { background: var(--fundraiser-bg); border-left: 6px solid #e67e22; }
+        .donate-btn { background: #e67e22; display: inline-block; margin-top: 10px; text-decoration: none; color: white; padding: 10px 20px; border-radius: 40px; font-weight: bold; }
+        .donate-btn:hover { background: #d35400; }
+        .beta-badge { display: inline-block; background: #f1c40f; color: #333; font-size: 12px; padding: 2px 8px; border-radius: 20px; margin-left: 10px; vertical-align: middle; }
+        .feedback-prompt { background: #3498db20; border-radius: 16px; padding: 15px; margin-top: 10px; text-align: center; }
+        /* Modal styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--card-bg); max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border-radius: 20px; padding: 20px; position: relative; color: var(--text); }
+        .modal-close { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; background: none; border: none; color: var(--text); }
+    </style>
+</head>
+<body>
+<!-- Floating control buttons -->
+<div class="control-buttons">
+    <button class="control-btn" id="darkModeToggle" title="Dark mode">🌙</button>
+    <button class="control-btn" id="toggleTestBarBtn" title="Show/Hide Test Bar">🧪</button>
+    <button class="control-btn" id="aboutBtn" title="About this app">ℹ️</button>
+</div>
+
+<!-- About Modal -->
+<div id="aboutModal" class="modal">
+    <div class="modal-content">
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+        <h2>ℹ️ About This App</h2>
+        <div id="aboutTextStatic">
+            <p><strong>What is this?</strong><br>
+            A lightweight, offline‑first web app for medical interns to track daily attendance, leaves, learning, and streaks. It’s designed as a fun, self‑managed tool for your batch – no accounts, no servers, no hidden costs. <strong>You own your data.</strong></p>
+
+            <p><strong>Why "Beta"?</strong><br>
+            We're testing it with a small group. Everything works, but we want your feedback to make it better. Use it, break it, suggest improvements.</p>
+
+            <p><strong>Features at a glance:</strong><br>
+            ✅ Check In / Check Out with real‑time rules (8:45–9:05 AM = full day; after 9:05 = half‑day; 12:30–12:45 PM = regular out‑punch).<br>
+            📅 Leaves – 15 per year, half‑day consumes 0.5, full‑day absent deducts 1. Go beyond 15? Enter the "Danger Zone" with a funny message "TU YAHA PE HI REH JAYEGA!!".<br>
+            🔥 Streak counter – rewards for 5, 7, 14, 30+ consecutive days.<br>
+            📊 Graphs – weekly attendance, full‑day vs half‑day pie chart, cumulative attendance trend.<br>
+            📝 Daily learning log – what did you learn today? Auto‑saved on check‑out.<br>
+            ⏳ Internship countdown – set your start date, see days remaining + progress bar.<br>
+            🌙 Dark mode – easy on the eyes.<br>
+            📁 Export to CSV / Import from CSV – full control over your data.<br>
+            🧪 Test mode – simulate any time of day and advance days (for testing rules without waiting).</p>
+
+            <p><strong>Data privacy:</strong> Everything is stored only on your device (localStorage). No one else can see your data unless you share the CSV file.</p>
+
+            <p><strong>How to play together (the "game" part):</strong><br>
+            Compare streaks, leaves left, and attendance % by sharing CSV exports.<br>
+            Create a friendly competition: "Who has the longest streak this month?"<br>
+            Share learning logs in a group chat.<br>
+            The app is a personal tracker, not a centralised leaderboard – but exporting and comparing is easy.</p>
+
+            <p><strong>Fundraiser (optional):</strong><br>
+            If you love this project, please consider donating to <strong>Rural India Online</strong> – an organisation working for education and digital access in rural communities.<br>
+            👉 <a href="https://ruralindiaonline.org/donate" target="_blank" rel="noopener noreferrer">Donate here →</a></p>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Test Bar -->
+    <div class="test-bar" id="testBar">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span>🧪 <strong>Test Mode</strong></span>
+            <label><input type="checkbox" id="testModeToggle"> Enable</label>
+            <select id="testTimeSelect" disabled></select>
+            <button id="nextDayBtn" style="background:#f39c12; padding:4px 12px;">📅 +1 Day</button>
+            <span id="testStatusMsg" style="font-size:12px;"></span>
+        </div>
+    </div>
+
+    <!-- Beta + Feedback Card -->
+    <div class="card">
+        <h1>📋 Internship Attendance <span class="beta-badge">Beta v1.0</span></h1>
+        <p>Welcome to your batch's attendance tracker – a fun, collaborative project. <strong>You have full control over your data.</strong> Everything stays on your device unless you export.</p>
+        <div class="feedback-prompt">
+            💬 <strong>We'd love your feedback!</strong> Use the app, break it, improve it. Share your thoughts with Dr. Pratik Jadhao. <br> 
+            🎮 <em>Think of it as a game: keep your streak alive, don't go into extension zone, and compete with friends (share CSV exports to compare!).</em>
+        </div>
+    </div>
+
+    <!-- Main Attendance Card -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div><label>Your Name / ID: </label><input type="text" id="internName" placeholder="e.g., Dr. Raj" autocomplete="off"></div>
+            <div><button id="switchUserBtn" style="background:#95a5a6;">🔄 Switch User</button>
+            <button id="clearDataBtn" class="clear-data-btn">🗑️ Clear All Data</button></div>
+        </div>
+        <div class="punch-buttons">
+            <button id="checkInBtn">✅ Check In (Morning)</button>
+            <button id="checkOutBtn">🏃 Check Out (Afternoon)</button>
+            <button id="takeLeaveBtn" style="background:var(--btn-warning);">📅 Take Leave</button>
+        </div>
+        <div style="margin: 15px 0;">
+            <label>📖 What did you learn today? (auto-saved on Check Out)</label>
+            <textarea id="dailyLearning" rows="2" placeholder="e.g., Performed central line, learned about sepsis management..."></textarea>
+        </div>
+        <div id="leaveModal" style="display:none; background:var(--card-bg); padding:15px; border-radius:16px; margin-top:10px;">
+            <h3>Record Leave</h3>
+            <label>Number of days:</label><input type="number" id="leaveDays" min="1" max="30" value="1">
+            <label>Reason:</label><input type="text" id="leaveReason" placeholder="e.g., Sick, personal">
+            <button id="confirmLeaveBtn" style="background:var(--btn-success);">Confirm</button>
+            <button id="cancelLeaveBtn">Cancel</button>
+        </div>
+        <div id="leaveDisplay" class="leave-status">Loading leaves...</div>
+        <div id="dangerZone" style="display:none;"></div>
+    </div>
+
+    <!-- Progress & Streak -->
+    <div class="card">
+        <h2>⏳ Internship Progress</h2>
+        <div class="countdown-card">
+            <label>Internship start date:</label>
+            <input type="date" id="startDateInput">
+            <button id="setStartDateBtn">Set Start Date</button>
+            <div id="countdownDisplay" style="margin-top:10px; font-weight:bold;"></div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        <div class="streak-card">
+            <div>🔥 <strong>Daily Attendance Streak</strong></div>
+            <div id="streakDisplay" class="streak-badge">0 days</div>
+            <div id="rewardDisplay" class="reward-message"></div>
+        </div>
+    </div>
+
+    <!-- Stats & Graphs -->
+    <div class="card">
+        <h2>📊 Your Attendance Stats</h2>
+        <div class="filter-bar">
+            <input type="date" id="filterStartDate" placeholder="Start date">
+            <input type="date" id="filterEndDate" placeholder="End date">
+            <button id="filterBtn">Filter</button>
+            <button id="resetFilterBtn">Reset</button>
+            <button id="exportCsvBtn" class="export-btn">📎 Export CSV</button>
+            <button id="importCsvBtn" class="import-btn">📂 Import CSV</button>
+            <input type="file" id="importFile" accept=".csv" style="display:none;">
+        </div>
+        <div class="search-box"><input type="text" id="searchLearning" placeholder="🔍 Search learning entries..."></div>
+        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+            <div style="flex:1; min-width: 200px;"><canvas id="weeklyChart"></canvas></div>
+            <div style="flex:1; min-width: 200px;"><canvas id="pieChart"></canvas></div>
+            <div style="flex:1; min-width: 200px;"><canvas id="trendChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="card">
+        <h2>📝 Attendance & Learning Records</h2>
+        <div style="overflow-x: auto;">
+            <table id="recordsTable">
+                <thead><tr><th>Date</th><th>Name</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Leaves Used</th><th>Learning / Remark</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Fundraiser Card (fixed position, just before footer) -->
+    <div class="card fundraiser-card">
+        <h2>❤️ Support a Cause</h2>
+        <p>If you love this project and find it useful, please consider donating to <strong>Rural India Online</strong> – an organisation working for digital literacy, education, and opportunity in rural communities.</p>
+        <a href="https://ruralindiaonline.org/donate" target="_blank" rel="noopener noreferrer" class="donate-btn">🌾 Donate Here →</a>
+        <p style="margin-top: 15px; font-size: 13px;">Every contribution helps. Thank you for your kindness.</p>
+    </div>
+
+    <footer>Developed by Dr. Pratik Jadhao | Beta v1.0 | Data stays on your device</footer>
+</div>
+
+<script>
+    // ---------- DATA ----------
+    let currentIntern = "";
+    let allRecords = [];
+    let leavesMap = {};
+    let streakData = { lastCheckInDate: null, currentStreak: 0 };
+    let internshipStartDate = null;
+    let lastAbsentCheckDate = "";
+
+    // Test mode state
+    let testModeEnabled = false;
+    let simulatedTime = "09:00:00";
+    let simulatedDateOffset = 0;
+
+    // Helper functions
+    function getRealTodayStr() { return new Date().toISOString().slice(0,10); }
+    function getTodayStr() {
+        if (testModeEnabled && simulatedDateOffset !== 0) {
+            let d = new Date(); d.setDate(d.getDate() + simulatedDateOffset);
+            return d.toISOString().slice(0,10);
+        }
+        return getRealTodayStr();
+    }
+    function getCurrentTimeStr() {
+        if (testModeEnabled) return simulatedTime + ":00";
+        return new Date().toTimeString().slice(0,8);
+    }
+    function getStatusFromCheckIn(timeStr) {
+        if (!timeStr) return "Absent";
+        let [h,m] = timeStr.split(":");
+        let minutes = parseInt(h)*60 + parseInt(m);
+        if (minutes <= 9*60+5) return "Full Day";
+        if (minutes <= 12*60) return "Half Day";
+        return "Irregular";
+    }
+
+    // Storage
+    function loadData() {
+        let stored = localStorage.getItem("attendance_records");
+        if(stored) allRecords = JSON.parse(stored);
+        stored = localStorage.getItem("attendance_leaves");
+        if(stored) leavesMap = JSON.parse(stored); else leavesMap = {};
+        let savedName = localStorage.getItem("saved_intern_name");
+        if(savedName) { document.getElementById("internName").value = savedName; currentIntern = savedName; }
+        stored = localStorage.getItem("attendance_streak");
+        if(stored) streakData = JSON.parse(stored); else streakData = { lastCheckInDate: null, currentStreak: 0 };
+        internshipStartDate = localStorage.getItem("internship_start_date");
+        if(internshipStartDate) document.getElementById("startDateInput").value = internshipStartDate;
+        let dark = localStorage.getItem("dark_mode");
+        if(dark === "true") document.body.classList.add("dark");
+        // Test bar visibility
+        let testBarHidden = localStorage.getItem("test_bar_hidden");
+        if(testBarHidden === "true") document.getElementById("testBar").classList.add("hidden");
+        // Clean old year leaves
+        let currentYear = new Date().getFullYear();
+        for(let key in leavesMap) {
+            let [name, year] = key.split("|");
+            if(parseInt(year) !== currentYear) delete leavesMap[key];
+        }
+        saveLeaves();
+        updateCountdown();
+        updateStreakDisplay();
+        autoMarkAbsent();
+    }
+    function saveRecords() { localStorage.setItem("attendance_records", JSON.stringify(allRecords)); }
+    function saveLeaves() { localStorage.setItem("attendance_leaves", JSON.stringify(leavesMap)); }
+    function saveStreak() { localStorage.setItem("attendance_streak", JSON.stringify(streakData)); }
+
+    // Leave logic
+    function getRemainingLeaves(name) {
+        let year = new Date().getFullYear();
+        let key = `${name}|${year}`;
+        if(!leavesMap[key]) leavesMap[key] = 15;
+        return leavesMap[key];
+    }
+    function setRemainingLeaves(name, newRemaining) {
+        let year = new Date().getFullYear();
+        let key = `${name}|${year}`;
+        leavesMap[key] = newRemaining;
+        saveLeaves();
+    }
+    function deductLeave(name, amount) {
+        let remaining = getRemainingLeaves(name);
+        let newRemaining = remaining - amount;
+        setRemainingLeaves(name, newRemaining);
+        return newRemaining;
+    }
+
+    // Auto-mark absent
+    function autoMarkAbsent() {
+        let today = getTodayStr();
+        if (lastAbsentCheckDate === today) return;
+        lastAbsentCheckDate = today;
+        if (!currentIntern) return;
+        let name = currentIntern;
+        let recordsForIntern = allRecords.filter(r => r.name === name);
+        let datesWithAttendance = new Set(recordsForIntern.map(r => r.date));
+        let checkDate = new Date();
+        checkDate.setDate(checkDate.getDate() - 1);
+        let startDate = internshipStartDate ? new Date(internshipStartDate) : new Date(checkDate.getFullYear(), 0, 1);
+        let absentCount = 0;
+        while (checkDate >= startDate) {
+            let dateStr = checkDate.toISOString().slice(0,10);
+            if (!datesWithAttendance.has(dateStr) && !allRecords.some(r => r.name === name && r.date === dateStr && r.status === "Leave")) {
+                deductLeave(name, 1);
+                allRecords.push({
+                    date: dateStr, name: name, checkInTime: "", checkOutTime: "",
+                    status: "Absent", leavesConsumed: 1, remark: "Auto-marked absent", learning: "", leaveDays: 0, leaveReason: ""
+                });
+                absentCount++;
+                if(getRemainingLeaves(name) < 0) showDangerZone(name);
+            }
+            checkDate.setDate(checkDate.getDate() - 1);
+            if (absentCount > 30) break;
+        }
+        if (absentCount > 0) {
+            saveRecords();
+            updateUI(name);
+            showToast(`Auto-marked ${absentCount} absent day(s), leaves deducted.`);
+        }
+    }
+
+    // Streak
+    function updateStreakAfterCheckIn(dateStr) {
+        let last = streakData.lastCheckInDate;
+        if (!last) streakData.currentStreak = 1;
+        else {
+            let diff = (new Date(dateStr) - new Date(last)) / (1000*60*60*24);
+            if (diff === 1) streakData.currentStreak++;
+            else if (diff > 1) streakData.currentStreak = 1;
+        }
+        streakData.lastCheckInDate = dateStr;
+        saveStreak();
+        updateStreakDisplay();
+    }
+    function updateStreakDisplay() {
+        document.getElementById("streakDisplay").innerHTML = `${streakData.currentStreak} day${streakData.currentStreak !== 1 ? 's' : ''}`;
+        let reward = "";
+        if (streakData.currentStreak >= 30) reward = "🏆 LEGENDARY! Free pizza party! 🍕";
+        else if (streakData.currentStreak >= 14) reward = "🎉 2 weeks! Bonus half day leave awarded!";
+        else if (streakData.currentStreak >= 7) reward = "🔥 1 week streak! Coffee treat! ☕";
+        else if (streakData.currentStreak >= 5) reward = "⭐ 5 days! Keep going!";
+        document.getElementById("rewardDisplay").innerHTML = reward;
+    }
+
+    // Countdown
+    function updateCountdown() {
+        if (!internshipStartDate) { document.getElementById("countdownDisplay").innerHTML = "Set start date"; return; }
+        let start = new Date(internshipStartDate);
+        let end = new Date(start); end.setFullYear(end.getFullYear() + 1);
+        let today = new Date();
+        let total = (end - start) / (1000*60*60*24);
+        let elapsed = (today - start) / (1000*60*60*24);
+        let percent = Math.min(100, Math.max(0, (elapsed / total) * 100));
+        document.getElementById("progressFill").style.width = percent + "%";
+        let daysLeft = Math.ceil((end - today) / (1000*60*60*24));
+        document.getElementById("countdownDisplay").innerHTML = `📅 Ends on ${end.toLocaleDateString()} (${daysLeft} days remaining)`;
+    }
+
+    // Core actions
+    function recordCheckIn(name) {
+        if(!name) { alert("Enter name"); return false; }
+        let today = getTodayStr();
+        let nowTime = getCurrentTimeStr();
+        let existing = allRecords.find(r => r.date === today && r.name === name);
+        if(existing && existing.checkInTime) { alert("Already checked in today"); return false; }
+        let status = getStatusFromCheckIn(nowTime);
+        let leavesConsumed = 0, remark = "";
+        if(status === "Half Day") { leavesConsumed = 0.5; remark = "Late punch → half day"; showToast("⚠️ Half day deducted."); }
+        else if(status === "Full Day") { leavesConsumed = 0; remark = "On time"; }
+        else { leavesConsumed = 1; remark = "Very late → 1 leave"; showToast("⚠️ Full leave deducted."); }
+        if(leavesConsumed > 0) {
+            let newRem = deductLeave(name, leavesConsumed);
+            if(newRem < 0) showDangerZone(name);
+        }
+        let learning = existing ? existing.learning : document.getElementById("dailyLearning").value;
+        let newRecord = { date: today, name, checkInTime: nowTime, checkOutTime: "", status, leavesConsumed, remark, learning, leaveDays: 0, leaveReason: "" };
+        if(existing) Object.assign(existing, newRecord);
+        else allRecords.push(newRecord);
+        saveRecords();
+        updateUI(name);
+        updateStreakAfterCheckIn(today);
+        showToast(`Checked IN at ${nowTime} - ${status}`);
+        return true;
+    }
+    function recordCheckOut(name) {
+        if(!name) { alert("Enter name"); return; }
+        let today = getTodayStr();
+        let nowTime = getCurrentTimeStr();
+        let record = allRecords.find(r => r.date === today && r.name === name);
+        if(!record) { alert("No check-in today"); return; }
+        if(record.checkOutTime) { alert("Already checked out"); return; }
+        record.checkOutTime = nowTime;
+        let learning = document.getElementById("dailyLearning").value;
+        if(learning) record.learning = learning;
+        let [h,m] = nowTime.split(":");
+        let minutes = parseInt(h)*60 + parseInt(m);
+        let outStart = 12*60+30, outEnd = 12*60+45;
+        if(minutes < outStart || minutes > outEnd) record.remark = (record.remark?record.remark+"; ":"") + "Irregular out-punch";
+        else record.remark = (record.remark?record.remark+"; ":"") + "Out-punch on time";
+        saveRecords();
+        updateUI(name);
+        showToast(`Checked OUT at ${nowTime}`);
+    }
+    function recordLeave(name, days, reason) {
+        if(!name) { alert("Enter name"); return; }
+        let remaining = getRemainingLeaves(name);
+        if(remaining < days && remaining >= 0 && !confirm(`You have only ${remaining} leaves. Taking ${days} will go into extension. Continue?`)) return;
+        deductLeave(name, days);
+        for(let i=0; i<days; i++) {
+            let leaveDate = new Date(); leaveDate.setDate(leaveDate.getDate() + i);
+            let dateStr = leaveDate.toISOString().slice(0,10);
+            let existing = allRecords.find(r => r.date === dateStr && r.name === name);
+            if(!existing || (!existing.checkInTime && !existing.checkOutTime)) {
+                allRecords.push({ date: dateStr, name, checkInTime: "", checkOutTime: "", status: "Leave", leavesConsumed: 1, remark: `Leave: ${reason}`, learning: "", leaveDays: days, leaveReason: reason });
+            } else {
+                existing.remark = (existing.remark?existing.remark+"; ":"") + `Leave (${reason})`;
+                existing.leavesConsumed += 1;
+            }
+        }
+        saveRecords();
+        updateUI(name);
+        showToast(`${days} day(s) leave recorded. Leaves remaining: ${getRemainingLeaves(name)}`);
+        if(getRemainingLeaves(name) < 0) showDangerZone(name);
+    }
+    function showDangerZone(name) {
+        let remaining = getRemainingLeaves(name);
+        let overdraft = Math.abs(remaining);
+        document.getElementById("dangerZone").style.display = "block";
+        document.getElementById("dangerZone").innerHTML = `<div class="danger-zone">💀 TU YAHA PE HI REH JAYEGA!! 😈<br>Extension days: ${overdraft} day(s) over. Internship extended forever.</div>`;
+    }
+    function updateUI(name) {
+        currentIntern = name;
+        let remaining = getRemainingLeaves(name);
+        let leaveDiv = document.getElementById("leaveDisplay");
+        if(remaining < 0) {
+            leaveDiv.innerHTML = `<div class="danger"><strong>⚠️ LEAVES EXHAUSTED!</strong> Remaining: ${remaining} (overdraft) - EXTENSION ZONE ACTIVE.</div>`;
+            showDangerZone(name);
+        } else {
+            leaveDiv.innerHTML = `<strong>📆 Leaves left this year:</strong> ${remaining} / 15 (Half day = 0.5 leave)`;
+            document.getElementById("dangerZone").style.display = "none";
+        }
+        renderTableAndCharts();
+        let today = getTodayStr();
+        let record = allRecords.find(r => r.date === today && r.name === name);
+        document.getElementById("dailyLearning").value = record ? (record.learning || "") : "";
+    }
+
+    // Table, charts, CSV
+    let filteredRecords = [];
+    function applyFilter() {
+        let start = document.getElementById("filterStartDate").value;
+        let end = document.getElementById("filterEndDate").value;
+        filteredRecords = allRecords.filter(r => {
+            if(start && r.date < start) return false;
+            if(end && r.date > end) return false;
+            return true;
+        });
+        if(currentIntern) filteredRecords = filteredRecords.filter(r => r.name === currentIntern);
+        renderTableAndCharts();
+    }
+    function renderTableAndCharts() {
+        let searchTerm = document.getElementById("searchLearning").value.toLowerCase();
+        let dataToShow = filteredRecords.length ? filteredRecords : (currentIntern ? allRecords.filter(r=>r.name===currentIntern) : allRecords);
+        if(searchTerm) dataToShow = dataToShow.filter(r => (r.learning || "").toLowerCase().includes(searchTerm) || (r.remark || "").toLowerCase().includes(searchTerm));
+        let tbody = document.querySelector("#recordsTable tbody");
+        tbody.innerHTML = "";
+        for(let rec of dataToShow) {
+            let row = tbody.insertRow();
+            row.insertCell(0).innerText = rec.date;
+            row.insertCell(1).innerText = rec.name;
+            row.insertCell(2).innerText = rec.checkInTime || "--";
+            row.insertCell(3).innerText = rec.checkOutTime || "--";
+            let statusColor = rec.status === "Full Day" ? "green" : (rec.status === "Half Day" ? "orange" : "red");
+            row.insertCell(4).innerHTML = `<span style="color:${statusColor}; font-weight:bold;">${rec.status}</span>`;
+            row.insertCell(5).innerText = rec.leavesConsumed;
+            let learn = rec.learning || rec.remark || "";
+            if(rec.leaveReason) learn = `Leave: ${rec.leaveReason} (${rec.leaveDays}d)` + (learn ? `; ${learn}` : "");
+            row.insertCell(6).innerText = learn;
+        }
+        updateCharts(dataToShow);
+    }
+    let weeklyChart, pieChart, trendChart;
+    function updateCharts(records) {
+        let last7Days = [];
+        for(let i=6;i>=0;i--) { let d = new Date(); d.setDate(d.getDate()-i); last7Days.push(d.toISOString().slice(0,10)); }
+        let dailyCount = last7Days.map(day => records.filter(r=>r.date===day && r.status!=="Absent" && r.status!=="Leave").length);
+        if(weeklyChart) weeklyChart.destroy();
+        weeklyChart = new Chart(document.getElementById("weeklyChart"), { type:'bar', data:{ labels:last7Days, datasets:[{ label:'Attendance', data:dailyCount, backgroundColor:'#2c7da0' }] } });
+        let fullDays = records.filter(r=>r.status==="Full Day").length;
+        let halfDays = records.filter(r=>r.status==="Half Day").length;
+        if(pieChart) pieChart.destroy();
+        pieChart = new Chart(document.getElementById("pieChart"), { type:'pie', data:{ labels:['Full Day','Half Day'], datasets:[{ data:[fullDays,halfDays], backgroundColor:['#2ecc71','#f39c12'] }] } });
+        let sorted = records.filter(r=>r.status!=="Leave").sort((a,b)=>a.date.localeCompare(b.date));
+        let trendLabels = sorted.map(r=>r.date);
+        let trendData = sorted.map((_,idx)=>idx+1);
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById("trendChart"), { type:'line', data:{ labels:trendLabels, datasets:[{ label:'Cumulative attendance', data:trendData, borderColor:'#e67e22', fill:false }] } });
+    }
+    function exportCSV() {
+        let data = currentIntern ? allRecords.filter(r=>r.name===currentIntern) : allRecords;
+        let headers = ["Date","Name","CheckIn","CheckOut","Status","LeavesUsed","Learning/Remark"];
+        let rows = [headers.join(",")];
+        for(let r of data) {
+            let learn = r.learning || r.remark || "";
+            if(r.leaveReason) learn = `Leave: ${r.leaveReason} (${r.leaveDays}d)` + (learn ? `; ${learn}` : "");
+            rows.push([r.date, r.name, r.checkInTime||"", r.checkOutTime||"", r.status, r.leavesConsumed, learn].join(","));
+        }
+        let blob = new Blob([rows.join("\n")], {type:"text/csv"});
+        let a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `attendance_${currentIntern||"all"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function importCSV(file) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let text = e.target.result;
+            let lines = text.split("\n");
+            let headers = lines[0].split(",");
+            let newRecords = [];
+            for(let i=1; i<lines.length; i++) {
+                if(!lines[i].trim()) continue;
+                let parts = lines[i].split(",");
+                if(parts.length >= 7) {
+                    newRecords.push({
+                        date: parts[0], name: parts[1], checkInTime: parts[2] || "", checkOutTime: parts[3] || "",
+                        status: parts[4], leavesConsumed: parseFloat(parts[5]) || 0,
+                        learning: parts[6], remark: parts[6], leaveDays: 0, leaveReason: ""
+                    });
+                }
+            }
+            allRecords.push(...newRecords);
+            saveRecords();
+            updateUI(currentIntern);
+            showToast(`Imported ${newRecords.length} records`);
+        };
+        reader.readAsText(file);
+    }
+    function showToast(msg) { let t = document.createElement("div"); t.className="toast"; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
+
+    // Test bar initialization
+    function populateTimeSelect() {
+        let select = document.getElementById("testTimeSelect");
+        select.innerHTML = "";
+        for(let h=8;h<=17;h++) {
+            for(let m=0;m<60;m+=5) {
+                let time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                let opt = document.createElement("option");
+                opt.value = time;
+                opt.textContent = time;
+                select.appendChild(opt);
+            }
+        }
+        select.value = "09:00";
+        simulatedTime = "09:00";
+    }
+    function updateTestStatus() {
+        let msgSpan = document.getElementById("testStatusMsg");
+        if(testModeEnabled) {
+            let offset = simulatedDateOffset === 0 ? " (real date)" : ` +${simulatedDateOffset} day(s)`;
+            msgSpan.innerHTML = `⚙️ Test: ${simulatedTime} | Date offset:${offset}`;
+        } else {
+            msgSpan.innerHTML = "Test mode OFF";
+        }
+    }
+
+    // Event listeners
+    document.getElementById("internName").addEventListener("input", (e) => { let n=e.target.value.trim(); if(n) { currentIntern=n; localStorage.setItem("saved_intern_name", n); updateUI(n); } });
+    document.getElementById("checkInBtn").onclick = () => { let n = document.getElementById("internName").value.trim(); if(n) recordCheckIn(n); else alert("Enter name"); };
+    document.getElementById("checkOutBtn").onclick = () => { let n = document.getElementById("internName").value.trim(); if(n) recordCheckOut(n); else alert("Enter name"); };
+    document.getElementById("takeLeaveBtn").onclick = () => { document.getElementById("leaveModal").style.display = "block"; };
+    document.getElementById("confirmLeaveBtn").onclick = () => { let n = document.getElementById("internName").value.trim(); let days = parseInt(document.getElementById("leaveDays").value); let reason = document.getElementById("leaveReason").value.trim() || "Not specified"; if(n && days>0) recordLeave(n, days, reason); document.getElementById("leaveModal").style.display = "none"; };
+    document.getElementById("cancelLeaveBtn").onclick = () => { document.getElementById("leaveModal").style.display = "none"; };
+    document.getElementById("switchUserBtn").onclick = () => { localStorage.removeItem("saved_intern_name"); document.getElementById("internName").value = ""; currentIntern = ""; renderTableAndCharts(); showToast("Switched user. Enter new name."); };
+    document.getElementById("clearDataBtn").onclick = () => { if(confirm("⚠️ This will delete ALL data. Are you sure?")) { localStorage.clear(); location.reload(); } };
+    document.getElementById("exportCsvBtn").onclick = exportCSV;
+    document.getElementById("importCsvBtn").onclick = () => { document.getElementById("importFile").click(); };
+    document.getElementById("importFile").onchange = (e) => { if(e.target.files.length) importCSV(e.target.files[0]); };
+    document.getElementById("filterBtn").onclick = applyFilter;
+    document.getElementById("resetFilterBtn").onclick = () => { document.getElementById("filterStartDate").value = ""; document.getElementById("filterEndDate").value = ""; filteredRecords = []; if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); };
+    document.getElementById("searchLearning").addEventListener("input", () => renderTableAndCharts());
+    document.getElementById("setStartDateBtn").onclick = () => { let d = document.getElementById("startDateInput").value; if(d) { internshipStartDate = d; localStorage.setItem("internship_start_date", d); updateCountdown(); showToast("Start date set"); } };
+    document.getElementById("darkModeToggle").onclick = () => { document.body.classList.toggle("dark"); localStorage.setItem("dark_mode", document.body.classList.contains("dark")); };
+    
+    // Test mode controls
+    let testToggle = document.getElementById("testModeToggle");
+    let testSelect = document.getElementById("testTimeSelect");
+    let nextDay = document.getElementById("nextDayBtn");
+    testToggle.onchange = (e) => { testModeEnabled = e.target.checked; testSelect.disabled = !testModeEnabled; if(!testModeEnabled) simulatedDateOffset = 0; updateTestStatus(); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); };
+    testSelect.onchange = (e) => { simulatedTime = e.target.value; updateTestStatus(); };
+    nextDay.onclick = () => { if(!testModeEnabled) { alert("Enable test mode first"); return; } simulatedDateOffset++; updateTestStatus(); showToast(`Test date +${simulatedDateOffset}`); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); };
+    
+    // Toggle test bar visibility
+    let toggleTestBarBtn = document.getElementById("toggleTestBarBtn");
+    let testBar = document.getElementById("testBar");
+    toggleTestBarBtn.onclick = () => {
+        testBar.classList.toggle("hidden");
+        localStorage.setItem("test_bar_hidden", testBar.classList.contains("hidden"));
+        showToast(testBar.classList.contains("hidden") ? "Test bar hidden" : "Test bar shown");
+    };
+    
+    // About modal
+    let aboutModal = document.getElementById("aboutModal");
+    let aboutBtn = document.getElementById("aboutBtn");
+    let closeModalBtn = document.getElementById("closeModalBtn");
+    aboutBtn.onclick = () => { aboutModal.style.display = "flex"; };
+    closeModalBtn.onclick = () => { aboutModal.style.display = "none"; };
+    window.onclick = (e) => { if (e.target === aboutModal) aboutModal.style.display = "none"; };
+
+    // Initial load
+    populateTimeSelect();
+    loadData();
+    updateTestStatus();
+    if(currentIntern) updateUI(currentIntern);
+    else renderTableAndCharts();
+</script>
+</body>
+</html>
