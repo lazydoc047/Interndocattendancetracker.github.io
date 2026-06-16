@@ -25,6 +25,7 @@
             --toast-bg: #333;
             --holiday-bg: #fff3cd;
             --holiday-text: #856404;
+            --quote-bg: rgba(59,130,246,0.08);
         }
         body.dark {
             --bg: #121826;
@@ -44,6 +45,7 @@
             --toast-bg: #1e293b;
             --holiday-bg: #2c2b1f;
             --holiday-text: #fbbf24;
+            --quote-bg: rgba(59,130,246,0.15);
         }
         body { background: var(--bg); margin: 0; padding: 20px; transition: background 0.3s; color: var(--text); }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -99,12 +101,27 @@
         .test-bar { background: rgba(245,158,11,0.15); border-radius: 40px; padding: 8px 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; justify-content: space-between; font-size: 14px; margin-top: 10px; border: 1px solid var(--border); }
         .hidden { display: none; }
         .notification-permission { background: rgba(59,130,246,0.1); padding: 8px 12px; border-radius: 20px; font-size: 12px; display: inline-block; margin-left: 10px; }
+        .referral-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; align-items: center; }
+        .referral-row input, .referral-row select { flex: 1; min-width: 150px; }
+        .star-rating { display: flex; gap: 5px; margin: 10px 0; font-size: 28px; cursor: pointer; }
+        .star { color: #ccc; transition: 0.2s; user-select: none; }
+        .star.active { color: #f5b301; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .status-pending { background: #f39c12; color: #fff; }
+        .status-accepted { background: #2ecc71; color: #fff; }
+        .status-rejected { background: #e74c3c; color: #fff; }
+        .status-referred-to-senior { background: #3498db; color: #fff; }
+        .status-on-hold { background: #95a5a6; color: #fff; }
+        .status-completed { background: #27ae60; color: #fff; }
+        .status-transferred { background: #9b59b6; color: #fff; }
+        .quote-card { background: var(--quote-bg); border-radius: 16px; padding: 12px; margin: 10px 0; font-style: italic; text-align: center; border-left: 4px solid var(--btn-warning); }
+        .quote-author { font-weight: bold; font-style: normal; margin-top: 5px; }
     </style>
 </head>
 <body>
 <div class="control-buttons">
     <button class="control-btn" id="darkModeToggle" title="Dark mode">🌙</button>
-    <button class="control-btn" id="adminTestBtn" title="Admin Test Mode (password required)">🔐</button>
+    <button class="control-btn" id="adminTestBtn" title="Admin Test Mode">🔐</button>
     <button class="control-btn" id="aboutBtn" title="About">ℹ️</button>
     <button class="control-btn" id="helpBtn" title="Help">❓</button>
 </div>
@@ -121,46 +138,131 @@
     </div>
 </div>
 
-<!-- Test Mode Panel (hidden by default) -->
+<!-- Test Mode Panel -->
 <div id="testPanel" class="test-bar hidden">
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <span>🧪 <strong>TEST MODE ACTIVE</strong></span>
         <label>Simulated time:</label>
         <select id="testTimeSelect"></select>
         <button id="nextDayBtn" style="background:var(--btn-warning);">📅 +1 Day</button>
-        <button id="disableTestBtn" style="background:var(--btn-danger);">❌ Disable Test Mode</button>
+        <button id="disableTestBtn" style="background:var(--btn-danger);">❌ Disable</button>
         <span id="testStatusMsg" style="font-size:12px;"></span>
     </div>
 </div>
 
-<!-- About & Help Modals -->
-<div id="aboutModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeAboutBtn">&times;</button><h2>🏆 Internship Attendance Tracker</h2><p><strong>Features:</strong><br>✅ Attendance with strict windows (8:45-9:05 AM, 12:30-12:45 PM)<br>✅ 15 leaves/year, half-day=0.5<br>✅ Holiday calendar (no leave deduction on holidays)<br>✅ Photo check-in proof<br>✅ PDF Certificate<br>✅ CSV Import/Export<br>✅ Dark mode, streaks, graphs<br>✅ Push notifications for reminders (8:40 AM & 12:25 PM)<br>✅ Admin Test Mode (password protected)</p><p>❤️ Donate to Rural India Online</p></div></div>
-<div id="helpModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeHelpBtn">&times;</button><h2>📘 How to Use</h2><p><strong>Attendance:</strong> Check-In only 8:45-9:05 AM, Check-Out only 12:30-12:45 PM<br><strong>Holidays:</strong> No leave deduction on listed holidays<br><strong>Photo:</strong> Click camera icon when checking in<br><strong>Certificate:</strong> Click "Get Certificate" to download PDF<br><strong>Push Notifications:</strong> Click "Allow" when prompted to receive daily reminders<br><strong>Admin Test Mode:</strong> Click 🔐 icon → enter password → simulate time/date</p></div></div>
+<!-- About & Help -->
+<div id="aboutModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeAboutBtn">&times;</button><h2>🏆 Internship Attendance Tracker</h2><p><strong>Features:</strong><br>✅ Full Day: Check‑in 8:45‑9:05 & Check‑out 12:30‑12:45<br>✅ Half Day: Any other combination<br>✅ Absent: No check‑in → 1 leave<br>✅ 15 leaves/year<br>✅ Holiday calendar<br>✅ Photo check‑in<br>✅ PDF Certificate<br>✅ CSV Import/Export<br>✅ Dark mode, streaks, graphs<br>✅ Daily motivational quotes from great physicians & Stoics</p><p>❤️ Donate to Rural India Online</p></div></div>
+<div id="helpModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeHelpBtn">&times;</button><h2>📘 How to Use</h2><p><strong>Full Day:</strong> Check‑in 8:45‑9:05 AND Check‑out 12:30‑12:45<br><strong>Half Day:</strong> Any other timing combination (or missing one)<br><strong>Absent:</strong> No check‑in → auto‑deduct 1 leave</p><p>Referrals, rating, remarks are optional.</p></div></div>
 
 <div class="container">
+    <!-- Clock -->
     <div class="clock-bar">
         <span>🕐 Current Device Time:</span>
         <span class="clock-display" id="liveClock">--:--:--</span>
         <span>📅 <span id="liveDate">--</span></span>
-        <span id="notificationStatus" class="notification-permission">🔔 Notification permission: <span id="permStatus">Checking...</span></span>
+        <span id="notificationStatus" class="notification-permission">🔔 Notification: <span id="permStatus">Checking...</span></span>
     </div>
-    <div class="warning-banner"><span>⚠️</span><span><strong>Important:</strong> Attendance uses your device clock. Check-In: 8:45-9:05 AM | Check-Out: 12:30-12:45 PM. National & festival holidays are exempt from leave deduction. Allow notifications for daily reminders!</span></div>
+    <div class="warning-banner"><span>⚠️</span><span><strong>Full Day:</strong> Check‑in 8:45‑9:05 & Check‑out 12:30‑12:45. Any other timing → Half Day. No check‑in → Absent (deducts 1 leave).</span></div>
 
+    <!-- Main Card -->
     <div class="card">
-        <h1>📋 Internship Attendance Tracker <span class="beta-badge">v2.0</span></h1>
+        <h1>📋 Internship Attendance Tracker <span class="beta-badge">v3.2</span></h1>
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <div><label>Your Name: </label><input type="text" id="internName" placeholder="Dr. Raj" autocomplete="off"></div>
             <div><button id="switchUserBtn">🔄 Switch User</button><button id="clearDataBtn" class="clear-data-btn">🗑️ Clear Data</button></div>
         </div>
         <div class="punch-buttons">
-            <button id="checkInBtn">✅ Check In (Morning)</button>
-            <button id="checkOutBtn">🏃 Check Out (Afternoon)</button>
+            <button id="checkInBtn">✅ Check In</button>
+            <button id="checkOutBtn">🏃 Check Out</button>
             <button id="takeLeaveBtn" style="background:var(--btn-warning);">📅 Take Leave</button>
             <button id="photoCheckInBtn" style="background:var(--btn-purple);">📸 Photo Check-In</button>
         </div>
         <div id="windowWarning" style="font-size:13px; color:var(--btn-danger); margin-top:-10px; margin-bottom:10px;"></div>
-        <div style="margin: 15px 0;"><label>📖 What did you learn today?</label><textarea id="dailyLearning" rows="2" placeholder="e.g., Performed central line..."></textarea></div>
+
+        <!-- Learning -->
+        <div style="margin: 15px 0;">
+            <label>📖 What did you learn today?</label>
+            <textarea id="dailyLearning" rows="2" placeholder="e.g., Performed central line..."></textarea>
+        </div>
+
+        <!-- Referrals -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 10px;">🩺 Referrals Done Today</h3>
+            <div class="referral-row">
+                <input type="text" id="referralIpd" placeholder="IPD No.">
+                <input type="text" id="referralPatient" placeholder="Patient Name">
+                <select id="referralDept">
+                    <option value="">Department</option>
+                    <option value="🫀 Cardiology">🫀 Cardiology</option>
+                    <option value="🧠 Neurology">🧠 Neurology</option>
+                    <option value="🫁 Pulmonology">🫁 Pulmonology</option>
+                    <option value="🩺 General Medicine">🩺 General Medicine</option>
+                    <option value="🏥 General Surgery">🏥 General Surgery</option>
+                    <option value="👶 Pediatrics">👶 Pediatrics</option>
+                    <option value="🤰 Obstetrics & Gynecology">🤰 Obstetrics & Gynecology</option>
+                    <option value="🦴 Orthopedics">🦴 Orthopedics</option>
+                    <option value="👁️ Ophthalmology">👁️ Ophthalmology</option>
+                    <option value="👂 ENT">👂 ENT</option>
+                    <option value="🩹 Dermatology">🩹 Dermatology</option>
+                    <option value="🧬 Psychiatry">🧬 Psychiatry</option>
+                    <option value="☢️ Radiology">☢️ Radiology</option>
+                    <option value="🔬 Pathology">🔬 Pathology</option>
+                    <option value="🧪 Microbiology">🧪 Microbiology</option>
+                    <option value="🩸 Hematology">🩸 Hematology</option>
+                    <option value="🫘 Nephrology">🫘 Nephrology</option>
+                    <option value="🫀 Cardiac Surgery">🫀 Cardiac Surgery</option>
+                    <option value="🧠 Neurosurgery">🧠 Neurosurgery</option>
+                    <option value="🦷 Dentistry">🦷 Dentistry</option>
+                    <option value="🧫 Oncology">🧫 Oncology</option>
+                    <option value="🧪 Biochemistry">🧪 Biochemistry</option>
+                    <option value="🏥 Emergency Medicine">🏥 Emergency Medicine</option>
+                    <option value="🏥 Anesthesiology">🏥 Anesthesiology</option>
+                    <option value="🏥 Plastic Surgery">🏥 Plastic Surgery</option>
+                    <option value="🏥 Urology">🏥 Urology</option>
+                    <option value="🏥 Vascular Surgery">🏥 Vascular Surgery</option>
+                    <option value="🏥 Rheumatology">🏥 Rheumatology</option>
+                    <option value="🏥 Endocrinology">🏥 Endocrinology</option>
+                    <option value="🏥 Gastroenterology">🏥 Gastroenterology</option>
+                    <option value="🏥 Geriatrics">🏥 Geriatrics</option>
+                    <option value="🏥 Infectious Diseases">🏥 Infectious Diseases</option>
+                    <option value="🏥 Neonatology">🏥 Neonatology</option>
+                    <option value="🏥 Physical Medicine">🏥 Physical Medicine</option>
+                    <option value="🏥 Rehabilitation">🏥 Rehabilitation</option>
+                </select>
+                <select id="referralStatus">
+                    <option value="Pending">⏳ Pending</option>
+                    <option value="Accepted">✅ Accepted</option>
+                    <option value="Rejected">❌ Rejected</option>
+                    <option value="Referred to Senior">⬆️ Referred to Senior</option>
+                    <option value="On Hold">⏸️ On Hold</option>
+                    <option value="Completed">✔️ Completed</option>
+                    <option value="Transferred">↗️ Transferred</option>
+                </select>
+                <label><input type="checkbox" id="referralDone"> Referral Done</label>
+            </div>
+        </div>
+
+        <!-- Rating -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 5px;">⭐ Rate Your Day</h3>
+            <div class="star-rating" id="starRating">
+                <span class="star" data-value="1">☆</span>
+                <span class="star" data-value="2">☆</span>
+                <span class="star" data-value="3">☆</span>
+                <span class="star" data-value="4">☆</span>
+                <span class="star" data-value="5">☆</span>
+            </div>
+            <input type="hidden" id="ratingValue" value="0">
+        </div>
+
+        <!-- Remarks -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+            <label>📝 Remarks (optional)</label>
+            <textarea id="dailyRemarks" rows="2" placeholder="Any additional notes..."></textarea>
+        </div>
+
         <div id="photoPreview"></div>
+
         <div id="leaveModal" style="display:none; background:var(--card-bg); padding:15px; border-radius:20px; margin-top:10px;">
             <h3>Record Leave</h3><label>Days:</label><input type="number" id="leaveDays" min="1" max="30" value="1">
             <label>Reason:</label><input type="text" id="leaveReason" placeholder="Sick, personal">
@@ -170,43 +272,93 @@
         <div id="dangerZone" style="display:none;"></div>
     </div>
 
+    <!-- Dashboard -->
     <div class="card">
         <h2>📊 Dashboard <span style="font-size:14px;">(hover numbers)</span></h2>
         <div class="stats-grid">
-            <div class="stat-card"><div class="stat-number" id="totalFullDays">0</div><div class="stat-label">✅ Full Days</div><div class="tooltip-text">On-time check-ins</div></div>
-            <div class="stat-card"><div class="stat-number" id="totalHalfDays">0</div><div class="stat-label">⚠️ Half Days</div><div class="tooltip-text">Late check-ins (0.5 leave)</div></div>
-            <div class="stat-card"><div class="stat-number" id="totalLeavesTaken">0</div><div class="stat-label">📅 Leaves Taken</div><div class="tooltip-text">Half day = 0.5</div></div>
+            <div class="stat-card"><div class="stat-number" id="totalFullDays">0</div><div class="stat-label">✅ Full Days</div><div class="tooltip-text">Both check‑in (8:45‑9:05) & check‑out (12:30‑12:45) on time</div></div>
+            <div class="stat-card"><div class="stat-number" id="totalHalfDays">0</div><div class="stat-label">⚠️ Half Days</div><div class="tooltip-text">Any other timing combination</div></div>
+            <div class="stat-card"><div class="stat-number" id="totalLeavesTaken">0</div><div class="stat-label">📅 Leaves Taken</div><div class="tooltip-text">Half day = 0.5, Absent = 1</div></div>
             <div class="stat-card"><div class="stat-number" id="leavesRemaining">15</div><div class="stat-label">🌟 Leaves Left</div><div class="tooltip-text">15 - leaves taken</div></div>
             <div class="stat-card"><div class="stat-number" id="attendancePercent">0%</div><div class="stat-label">📈 Attendance %</div><div class="tooltip-text">Present ÷ total days</div></div>
-            <div class="stat-card"><div class="stat-number" id="currentStreakStat">0</div><div class="stat-label">🔥 Streak</div><div class="tooltip-text">Consecutive check-ins</div></div>
+            <div class="stat-card"><div class="stat-number" id="currentStreakStat">0</div><div class="stat-label">🔥 Streak</div><div class="tooltip-text">Consecutive check‑ins</div></div>
         </div>
-        <div class="streak-card"><div>🏆 Motivational Boost</div><div id="rewardDisplay" class="reward-message"></div></div>
+        <div class="streak-card">
+            <div>🏆 Motivational Boost</div>
+            <div id="quoteDisplay" class="quote-card">
+                <div id="quoteText">Loading quote...</div>
+                <div id="quoteAuthor" class="quote-author"></div>
+            </div>
+            <div id="rewardDisplay" class="reward-message"></div>
+        </div>
         <div class="countdown-card">
-            <div>⏳ Internship Countdown</div><div id="countdownDisplay"></div>
+            <div>⏳ Internship Countdown</div>
+            <div id="countdownDisplay"></div>
             <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div style="margin-top:5px; font-size:14px;"><span id="totalInternshipDays">0</span> days total (1 year)</div>
             <div style="margin-top:10px;"><label>Start date: </label><input type="date" id="startDateInput"><button id="setStartDateBtn">Set</button></div>
         </div>
         <div class="inline-buttons"><button id="getCertificateBtn" style="background:var(--btn-success);">📜 Get Certificate (PDF)</button></div>
     </div>
 
+    <!-- Analytics -->
     <div class="card">
         <h2>📈 Analytics</h2>
         <div class="filter-bar"><input type="date" id="filterStartDate"><input type="date" id="filterEndDate"><button id="filterBtn">Apply</button><button id="resetFilterBtn">Reset</button><button id="exportCsvBtn" class="export-btn">📎 Export CSV</button><button id="importCsvBtn" class="import-btn">📂 Import CSV</button><input type="file" id="importFile" accept=".csv" style="display:none;"></div>
         <div class="range-buttons"><span>Quick:</span><button class="range-btn" data-range="7">7d</button><button class="range-btn" data-range="15">15d</button><button class="range-btn" data-range="30">30d</button><button class="range-btn" data-range="180">6m</button></div>
         <div class="search-box"><input type="text" id="searchLearning" placeholder="🔍 Search learning..."></div>
-        <div class="chart-container"><div class="chart-title">📅 Daily Attendance</div><canvas id="weeklyCanvas" width="600" height="300"></canvas><div class="chart-note">Bar = you checked in that day</div></div>
-        <div class="chart-container"><div class="chart-title">🥧 Full vs Half Day</div><canvas id="pieCanvas" width="400" height="300"></canvas></div>
-        <div class="chart-container"><div class="chart-title">📈 Cumulative Trend</div><canvas id="trendCanvas" width="600" height="300"></canvas></div>
+        <div class="chart-container"><div class="chart-title">📅 Daily Attendance</div><canvas id="weeklyCanvas" width="600" height="300"></canvas><div class="chart-note">Each bar = you checked in that day</div></div>
+        <div class="chart-container"><div class="chart-title">🥧 Full vs Half Days</div><canvas id="pieCanvas" width="400" height="300"></canvas></div>
+        <div class="chart-container"><div class="chart-title">📈 Cumulative Attendance</div><canvas id="trendCanvas" width="600" height="300"></canvas></div>
     </div>
 
-    <div class="card"><h2>📝 Records</h2><div style="overflow-x:auto;"><table id="recordsTable"><thead><tr><th>Date</th><th>Name</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Leaves</th><th>Learning / Remark</th></tr></thead><tbody></tbody></table></div></div>
+    <!-- Records Table -->
+    <div class="card"><h2>📝 Records</h2><div style="overflow-x:auto;"><table id="recordsTable"><thead><tr><th>Date</th><th>Name</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Leaves</th><th>Learning</th><th>IPD</th><th>Patient</th><th>Dept</th><th>Status</th><th>Ref.</th><th>⭐</th><th>Remarks</th></tr></thead><tbody></tbody></table></div></div>
 
+    <!-- Fundraiser -->
     <div class="card fundraiser-card"><h2>❤️ Support a Cause</h2><p>Donate to <strong>Rural India Online</strong> – digital literacy in rural areas.</p><a href="https://ruralindiaonline.org/donate" target="_blank" class="donate-btn">🌾 Donate Here →</a></div>
     <div class="feedback-prompt">💬 Feedback? Share with Dr. Pratik Jadhao. 🎮 Keep your streak alive!</div>
-    <footer>Developed by Dr. Pratik Jadhao | v2.0 | Data stays on your device</footer>
+    <footer>Developed by Dr. Pratik Jadhao | v3.2 | Data stays on your device</footer>
 </div>
 
 <script>
+    // ==================== QUOTES ====================
+    const QUOTES = [
+        { text: "Wherever the art of Medicine is loved, there is also a love of Humanity.", author: "Hippocrates" },
+        { text: "The physician must be able to tell the antecedents, know the present, and foretell the future.", author: "Hippocrates" },
+        { text: "The good physician treats the disease; the great physician treats the patient who has the disease.", author: "William Osler" },
+        { text: "The best preparation for tomorrow is to do today's work superbly well.", author: "William Osler" },
+        { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle" },
+        { text: "It is not death that a man should fear, but he should fear never beginning to live.", author: "Marcus Aurelius" },
+        { text: "You have power over your mind – not outside events. Realize this, and you will find strength.", author: "Marcus Aurelius" },
+        { text: "It's not what happens to you, but how you react to it that matters.", author: "Epictetus" },
+        { text: "He who has a why to live for can bear almost any how.", author: "Friedrich Nietzsche" },
+        { text: "The greatest medicine of all is to teach people how not to need it.", author: "Hippocrates" },
+        { text: "A physician is obligated to consider more than a diseased organ, more than the whole man – he must see the man in his world.", author: "Albert Schweitzer" },
+        { text: "To cure sometimes, to relieve often, to comfort always.", author: "Hippocrates" },
+        { text: "The secret of patient care is caring for the patient.", author: "Francis W. Peabody" },
+        { text: "The patient is the center of the medical universe.", author: "William Osler" },
+        { text: "It is much more important to know what sort of a patient has a disease than what sort of a disease a patient has.", author: "William Osler" },
+        { text: "The art of medicine consists of amusing the patient while nature cures the disease.", author: "Voltaire" },
+        { text: "A wise man ought to realize that health is his most valuable possession.", author: "Hippocrates" },
+        { text: "The physician who knows the patient's temperament, constitution, and habits, can often foretell the course of disease.", author: "Hippocrates" },
+        { text: "One of the first duties of the physician is to educate the masses not to take medicine.", author: "William Osler" },
+        { text: "The first wealth is health.", author: "Ralph Waldo Emerson" },
+        { text: "The natural healing force within each one of us is the greatest force in getting well.", author: "Hippocrates" },
+        { text: "Let food be thy medicine and medicine be thy food.", author: "Hippocrates" },
+        { text: "The doctor of the future will give no medication, but will interest his patients in the care of the human frame, diet, and in the cause and prevention of disease.", author: "Thomas Edison" },
+        { text: "The greatest mistake in the treatment of diseases is that there are physicians for the body and physicians for the soul, although the two cannot be separated.", author: "Plato" },
+        { text: "The most important thing in illness is never to lose heart.", author: "Nikolai Lenin" },
+        { text: "You cannot teach a man anything; you can only help him find it within himself.", author: "Galileo Galilei" }
+    ];
+
+    function getDailyQuote() {
+        const today = new Date();
+        const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+        const index = dayOfYear % QUOTES.length;
+        return QUOTES[index];
+    }
+
     // ==================== HOLIDAYS 2026 ====================
     const HOLIDAYS_2026 = {
         "2026-01-26": "Republic Day",
@@ -224,14 +376,13 @@
 
     // ==================== PUSH NOTIFICATIONS ====================
     let notificationPermission = false;
-    
     function requestNotificationPermission() {
         if ("Notification" in window) {
             Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
                     notificationPermission = true;
                     document.getElementById("permStatus").innerText = "✅ Allowed";
-                    showToast("Notifications enabled! You'll receive daily reminders at 8:40 AM and 12:25 PM.");
+                    showToast("Notifications enabled!");
                 } else {
                     document.getElementById("permStatus").innerText = "❌ Blocked";
                 }
@@ -240,89 +391,48 @@
             document.getElementById("permStatus").innerText = "Not supported";
         }
     }
-    
     function sendNotification(title, body, tag = null) {
         if (notificationPermission && document.hasFocus() === false) {
-            const options = { body: body, icon: "https://img.icons8.com/color/48/checked-checkbox.png", vibrate: [200, 100, 200] };
+            const options = { body, icon: "https://img.icons8.com/color/48/checked-checkbox.png", vibrate: [200,100,200] };
             if (tag) options.tag = tag;
             new Notification(title, options);
         } else if (notificationPermission && document.hasFocus()) {
-            // Show toast instead of notification when app is open
             showToast(`🔔 ${title}: ${body}`);
         }
     }
-    
     function scheduleReminders() {
         const now = new Date();
-        const morningReminder = new Date();
-        morningReminder.setHours(8, 40, 0, 0);
-        const afternoonReminder = new Date();
-        afternoonReminder.setHours(12, 25, 0, 0);
-        
-        // Schedule morning reminder
-        if (now < morningReminder) {
-            const timeUntilMorning = morningReminder - now;
-            setTimeout(() => {
-                sendNotification("🌅 Morning Reminder", "Time to check in for the day! (8:45-9:05 AM)", "morning-checkin");
-                // Reschedule for next day after sending
-                setInterval(() => {
-                    const nextMorning = new Date();
-                    nextMorning.setDate(nextMorning.getDate() + 1);
-                    nextMorning.setHours(8, 40, 0, 0);
-                    const wait = nextMorning - new Date();
-                    setTimeout(() => {
-                        sendNotification("🌅 Morning Reminder", "Time to check in for the day! (8:45-9:05 AM)", "morning-checkin");
-                    }, wait);
-                }, 24 * 60 * 60 * 1000);
-            }, timeUntilMorning);
-        } else {
-            // Schedule for next day
-            const nextMorning = new Date();
-            nextMorning.setDate(nextMorning.getDate() + 1);
-            nextMorning.setHours(8, 40, 0, 0);
-            const wait = nextMorning - now;
-            setTimeout(() => {
-                sendNotification("🌅 Morning Reminder", "Time to check in for the day! (8:45-9:05 AM)", "morning-checkin");
-            }, wait);
-        }
-        
-        // Schedule afternoon reminder
-        if (now < afternoonReminder) {
-            const timeUntilAfternoon = afternoonReminder - now;
-            setTimeout(() => {
-                sendNotification("🌤️ Afternoon Reminder", "Time to check out! (12:30-12:45 PM)", "afternoon-checkout");
-                setInterval(() => {
-                    const nextAfternoon = new Date();
-                    nextAfternoon.setDate(nextAfternoon.getDate() + 1);
-                    nextAfternoon.setHours(12, 25, 0, 0);
-                    const wait = nextAfternoon - new Date();
-                    setTimeout(() => {
-                        sendNotification("🌤️ Afternoon Reminder", "Time to check out! (12:30-12:45 PM)", "afternoon-checkout");
-                    }, wait);
-                }, 24 * 60 * 60 * 1000);
-            }, timeUntilAfternoon);
-        } else {
-            const nextAfternoon = new Date();
-            nextAfternoon.setDate(nextAfternoon.getDate() + 1);
-            nextAfternoon.setHours(12, 25, 0, 0);
-            const wait = nextAfternoon - now;
-            setTimeout(() => {
-                sendNotification("🌤️ Afternoon Reminder", "Time to check out! (12:30-12:45 PM)", "afternoon-checkout");
-            }, wait);
-        }
+        const morning = new Date(); morning.setHours(8,40,0,0);
+        const afternoon = new Date(); afternoon.setHours(12,25,0,0);
+        const schedule = (time, title, body, tag) => {
+            const diff = time - now;
+            if (diff > 0) {
+                setTimeout(() => {
+                    sendNotification(title, body, tag);
+                    setInterval(() => {
+                        const next = new Date(); next.setDate(next.getDate()+1); next.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                        const wait = next - new Date();
+                        setTimeout(() => sendNotification(title, body, tag), wait);
+                    }, 24*60*60*1000);
+                }, diff);
+            } else {
+                const next = new Date(); next.setDate(next.getDate()+1); next.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                const wait = next - now;
+                setTimeout(() => sendNotification(title, body, tag), wait);
+            }
+        };
+        schedule(morning, "🌅 Morning Reminder", "Time to check in!", "morning");
+        schedule(afternoon, "🌤️ Afternoon Reminder", "Time to check out!", "afternoon");
     }
 
     // ==================== DATA ====================
     let currentIntern = "", allRecords = [], leavesMap = {}, streakData = { lastCheckInDate: null, currentStreak: 0 }, internshipStartDate = null, lastAbsentCheckDate = "";
     let currentRange = 30, customStartDate = "", customEndDate = "";
     let photoData = null;
-    
-    // Admin Test Mode
-    let testModeEnabled = false;
-    let simulatedTime = "09:00:00";
-    let simulatedDateOffset = 0;
+    let testModeEnabled = false, simulatedTime = "09:00:00", simulatedDateOffset = 0;
     const ADMIN_PASSWORD = "admin123";
 
+    // Helper
     function getRealTodayStr() { return new Date().toISOString().slice(0,10); }
     function getTodayStr() {
         if (testModeEnabled && simulatedDateOffset !== 0) {
@@ -335,28 +445,46 @@
         if (testModeEnabled) return simulatedTime;
         return new Date().toTimeString().slice(0,8);
     }
-    function isWithinMorningWindow() { let [h,m]=getCurrentTimeStr().split(":"); let mins=parseInt(h)*60+parseInt(m); return mins>=8*60+45 && mins<=9*60+5; }
-    function isWithinAfternoonWindow() { let [h,m]=getCurrentTimeStr().split(":"); let mins=parseInt(h)*60+parseInt(m); return mins>=12*60+30 && mins<=12*60+45; }
-    
+
+    // New status classification based on both times
+    function getStatus(checkIn, checkOut) {
+        if (!checkIn) return "Absent";
+        if (isHoliday(getTodayStr())) return "Absent"; // holidays handled separately
+        
+        let [hIn, mIn] = checkIn.split(":").map(Number);
+        let inMins = hIn*60 + mIn;
+        let morningStart = 8*60+45, morningEnd = 9*60+5;
+        let isMorningOnTime = inMins >= morningStart && inMins <= morningEnd;
+        
+        if (!checkOut) {
+            // Check-in only => half day
+            return "Half Day";
+        }
+        let [hOut, mOut] = checkOut.split(":").map(Number);
+        let outMins = hOut*60 + mOut;
+        let afternoonStart = 12*60+30, afternoonEnd = 12*60+45;
+        let isAfternoonOnTime = outMins >= afternoonStart && outMins <= afternoonEnd;
+        
+        if (isMorningOnTime && isAfternoonOnTime) return "Full Day";
+        return "Half Day";
+    }
+
+    function getLeavesConsumed(status) {
+        if (status === "Full Day") return 0;
+        if (status === "Half Day") return 0.5;
+        if (status === "Absent") return 1;
+        return 0;
+    }
+
     function updateButtonState() {
         let inBtn = document.getElementById("checkInBtn"), outBtn = document.getElementById("checkOutBtn"), warn = document.getElementById("windowWarning");
         if(!inBtn) return;
-        let inAllowed = isWithinMorningWindow(), outAllowed = isWithinAfternoonWindow();
-        inBtn.disabled = !inAllowed; outBtn.disabled = !outAllowed;
-        if(!inAllowed && !outAllowed) warn.innerHTML = "⏰ Outside attendance windows. Check-In: 8:45-9:05 AM | Check-Out: 12:30-12:45 PM";
-        else if(!inAllowed) warn.innerHTML = "⏰ Check-In window closed. Check-Out available 12:30-12:45 PM.";
-        else if(!outAllowed) warn.innerHTML = "⏰ Check-Out window closed. Check-In available 8:45-9:05 AM.";
-        else warn.innerHTML = "✅ Both windows open.";
+        inBtn.disabled = false;
+        outBtn.disabled = false;
+        warn.innerHTML = "✅ Check In/Out anytime. Status determined by your timing.";
     }
 
-    function getStatusFromCheckIn(timeStr) {
-        if(!timeStr) return "Absent";
-        let [h,m]=timeStr.split(":"); let mins=parseInt(h)*60+parseInt(m);
-        if(mins>=8*60+45 && mins<=9*60+5) return "Full Day";
-        if(mins>9*60+5 && mins<=12*60) return "Half Day";
-        return "Irregular";
-    }
-
+    // Storage
     function loadData() {
         let stored = localStorage.getItem("attendance_records"); if(stored) allRecords = JSON.parse(stored);
         stored = localStorage.getItem("attendance_leaves"); if(stored) leavesMap = JSON.parse(stored); else leavesMap = {};
@@ -367,6 +495,10 @@
         let currentYear = new Date().getFullYear();
         for(let key in leavesMap) { let [name, year] = key.split("|"); if(parseInt(year) !== currentYear) delete leavesMap[key]; }
         saveLeaves(); updateStreakDisplay(); autoMarkAbsent(); updateButtonState();
+        // Set daily quote
+        const daily = getDailyQuote();
+        document.getElementById("quoteText").innerText = `"${daily.text}"`;
+        document.getElementById("quoteAuthor").innerText = `— ${daily.author}`;
     }
     function saveRecords() { localStorage.setItem("attendance_records", JSON.stringify(allRecords)); }
     function saveLeaves() { localStorage.setItem("attendance_leaves", JSON.stringify(leavesMap)); }
@@ -386,7 +518,7 @@
             let dateStr=checkDate.toISOString().slice(0,10);
             if(!datesWithAttendance.has(dateStr) && !allRecords.some(r=>r.name===name && r.date===dateStr && (r.status==="Leave"||r.status==="Absent"))) {
                 if(!isHoliday(dateStr)) { deductLeave(name,1); }
-                allRecords.push({date:dateStr,name:name,checkInTime:"",checkOutTime:"",status:"Absent",leavesConsumed:isHoliday(dateStr)?0:1,remark:isHoliday(dateStr)?"Holiday - no leave deducted":"Auto-marked absent",learning:"",leaveDays:0,leaveReason:""});
+                allRecords.push({date:dateStr,name:name,checkInTime:"",checkOutTime:"",status:"Absent",leavesConsumed:isHoliday(dateStr)?0:1,remark:isHoliday(dateStr)?"Holiday - no leave":"Auto-marked absent",learning:"",leaveDays:0,leaveReason:"",ipd:"",patient:"",dept:"",refStatus:"",referralDone:false,rating:0,remarks:""});
                 absentCount++;
                 if(getRemainingLeaves(name)<0) showDangerZone(name);
             }
@@ -422,40 +554,119 @@
         document.getElementById("progressFill").style.width=percent+"%";
         let daysLeft=Math.ceil((end-today)/(1000*60*60*24));
         document.getElementById("countdownDisplay").innerHTML=`📅 Ends on ${end.toLocaleDateString()} (${daysLeft} days left)`;
+        document.getElementById("totalInternshipDays").innerText=Math.round(total);
     }
 
+    // Record check-in (ALWAYS records)
     function recordCheckIn(name, photoBase64=null) {
         if(!name) { alert("Enter name"); return false; }
-        if(!isWithinMorningWindow() && !testModeEnabled) { showToast("❌ Check-In only 8:45-9:05 AM"); return false; }
         let today=getTodayStr(), nowTime=getCurrentTimeStr();
         if(allRecords.some(r=>r.date===today && r.name===name && r.checkInTime)) { alert("Already checked in today"); return false; }
-        let status=getStatusFromCheckIn(nowTime), leavesConsumed=0, remark="";
-        if(status==="Half Day") { leavesConsumed=0.5; remark="Late punch → half day"; showToast("⚠️ Half day deducted."); }
-        else if(status==="Full Day") { leavesConsumed=0; remark="On time"; }
-        else { leavesConsumed=1; remark="Outside window → 1 leave"; showToast("⚠️ Full leave deducted."); }
-        if(leavesConsumed>0 && !isHoliday(today)) { let newRem=deductLeave(name,leavesConsumed); if(newRem<0) showDangerZone(name); }
+        // We'll set status later after check-out, but we need to create record with placeholder status
+        let status = "Half Day"; // will be updated after check-out
+        let leavesConsumed = 0; // will be updated after both times known
+        let remark = "";
+        // For now, record check-in time only
         let learning=document.getElementById("dailyLearning").value;
-        let newRecord={date:today,name,checkInTime:nowTime,checkOutTime:"",status,leavesConsumed:isHoliday(today)?0:leavesConsumed,remark:isHoliday(today)?remark+" (Holiday - no leave)":remark,learning,leaveDays:0,leaveReason:"",photo:photoBase64};
+        let ipd=document.getElementById("referralIpd").value.trim();
+        let patient=document.getElementById("referralPatient").value.trim();
+        let dept=document.getElementById("referralDept").value;
+        let refStatus=document.getElementById("referralStatus").value;
+        let referralDone=document.getElementById("referralDone").checked;
+        let rating=parseInt(document.getElementById("ratingValue").value) || 0;
+        let remarks=document.getElementById("dailyRemarks").value.trim();
+
+        let newRecord={
+            date:today, name, checkInTime:nowTime, checkOutTime:"", status:"Half Day",
+            leavesConsumed:0,
+            remark:"", learning, leaveDays:0, leaveReason:"", photo:photoBase64,
+            ipd, patient, dept, refStatus, referralDone, rating, remarks
+        };
         let existing=allRecords.find(r=>r.date===today && r.name===name);
-        if(existing) Object.assign(existing,newRecord);
+        if(existing) Object.assign(existing, newRecord);
         else allRecords.push(newRecord);
-        saveRecords(); updateUI(name); updateStreakAfterCheckIn(today);
-        showToast(`Checked IN at ${nowTime} - ${status}${isHoliday(today)?' (Holiday)':''}`);
+        // Update status after checking out later
+        saveRecords(); 
+        // We'll recompute status after check-out
+        updateUI(name); 
+        updateStreakAfterCheckIn(today);
+        showToast(`Checked IN at ${nowTime}`);
+        // Recompute status after both times
+        computeAndUpdateStatus(name, today);
         return true;
     }
 
     function recordCheckOut(name) {
         if(!name) { alert("Enter name"); return; }
-        if(!isWithinAfternoonWindow() && !testModeEnabled) { showToast("❌ Check-Out only 12:30-12:45 PM"); return; }
         let today=getTodayStr(), nowTime=getCurrentTimeStr();
         let record=allRecords.find(r=>r.date===today && r.name===name);
         if(!record) { alert("No check-in today"); return; }
         if(record.checkOutTime) { alert("Already checked out"); return; }
         record.checkOutTime=nowTime;
+        // Save learning and new fields
         let learning=document.getElementById("dailyLearning").value;
         if(learning) record.learning=learning;
-        saveRecords(); updateUI(name);
+        record.ipd=document.getElementById("referralIpd").value.trim();
+        record.patient=document.getElementById("referralPatient").value.trim();
+        record.dept=document.getElementById("referralDept").value;
+        record.refStatus=document.getElementById("referralStatus").value;
+        record.referralDone=document.getElementById("referralDone").checked;
+        record.rating=parseInt(document.getElementById("ratingValue").value) || 0;
+        record.remarks=document.getElementById("dailyRemarks").value.trim();
+        saveRecords(); 
+        computeAndUpdateStatus(name, today);
+        updateUI(name);
         showToast(`Checked OUT at ${nowTime}`);
+    }
+
+    function computeAndUpdateStatus(name, dateStr) {
+        let record = allRecords.find(r => r.date === dateStr && r.name === name);
+        if(!record) return;
+        let status = getStatus(record.checkInTime, record.checkOutTime);
+        let oldStatus = record.status;
+        record.status = status;
+        // Recalculate leaves consumed
+        let leavesConsumed = 0;
+        if (status === "Half Day") leavesConsumed = 0.5;
+        else if (status === "Absent") leavesConsumed = 1;
+        else leavesConsumed = 0;
+        // If holiday, override to 0
+        if (isHoliday(dateStr)) leavesConsumed = 0;
+        record.leavesConsumed = leavesConsumed;
+        // If status changed from previous, adjust leaves
+        // We'll deduct leave based on current status
+        // But we must ensure we don't double-deduct; we'll handle in recordCheckIn/Out
+        // Actually we should apply deduction only once per day.
+        // We'll compute difference
+        // For simplicity, we'll just set leavesConsumed and rely on autoMarkAbsent for absent days.
+        // For existing records, we only update leavesConsumed without altering leave balance (since leaves are deducted at check-in time based on status)
+        // We'll adjust: remove old deduction and apply new? Too complex. We'll just set and user can manually adjust leaves.
+        // Better: only deduct when status is Half Day or Absent, but we already did in check-in? 
+        // In recordCheckIn we didn't deduct yet. We'll do it here only if status changes to Half Day or Absent.
+        // To avoid double deduction, we'll only deduct if status is Half Day or Absent and not already deducted.
+        // We'll store a flag or just rely on autoMarkAbsent for absent.
+        // Let's do it simple: autoMarkAbsent handles absent, and recordCheckIn/Out will handle half/full.
+        // But half-day deduction should happen when check-in is late (after 9:05) OR check-out is late.
+        // Since we now have both times, we can deduct here.
+        // We'll implement deduction only when status is Half Day.
+        // And we'll ensure it's only deducted once.
+        // We'll use a flag 'leaveDeducted' in record? Not present. We'll just check if leavesConsumed > 0 and status is Half Day, then deduct if not already deducted.
+        // Simpler: Deduct at the time of check-out or check-in? We'll do it at check-out when status is finalized.
+        // So in recordCheckOut, after updating, we call computeAndUpdateStatus which deducts if needed.
+        // We'll check if record.leavesConsumed is already set and if status is Half Day and not already deducted.
+        // We'll use a separate flag "deducted" in record.
+        // I'll add a 'deducted' flag to record to avoid double deduction.
+        if (!record.hasOwnProperty('deducted')) record.deducted = false;
+        if (!record.deducted && (status === "Half Day" || status === "Absent")) {
+            let amount = status === "Half Day" ? 0.5 : 1;
+            if (!isHoliday(dateStr)) {
+                let newRem = deductLeave(name, amount);
+                record.deducted = true;
+                if (newRem < 0) showDangerZone(name);
+            }
+        }
+        saveRecords();
+        updateUI(name);
     }
 
     function recordLeave(name, days, reason) {
@@ -468,10 +679,11 @@
             let dateStr=leaveDate.toISOString().slice(0,10);
             let existing=allRecords.find(r=>r.date===dateStr && r.name===name);
             if(!existing || (!existing.checkInTime && !existing.checkOutTime)) {
-                allRecords.push({date:dateStr,name,checkInTime:"",checkOutTime:"",status:"Leave",leavesConsumed:1,remark:`Leave: ${reason}`,learning:"",leaveDays:days,leaveReason:reason});
+                allRecords.push({date:dateStr,name,checkInTime:"",checkOutTime:"",status:"Leave",leavesConsumed:1,remark:`Leave: ${reason}`,learning:"",leaveDays:days,leaveReason:reason,ipd:"",patient:"",dept:"",refStatus:"",referralDone:false,rating:0,remarks:"",deducted:true});
             } else {
                 existing.remark=(existing.remark?existing.remark+"; ":"")+`Leave (${reason})`;
                 existing.leavesConsumed+=1;
+                existing.deducted=true;
             }
         }
         saveRecords(); updateUI(name);
@@ -512,191 +724,272 @@
         else { leaveDiv.innerHTML=`<strong>📆 Leaves left this year:</strong> ${remaining} / 15 (Half day = 0.5 leave)`; document.getElementById("dangerZone").style.display="none"; }
         updateStatsDashboard(name); renderTableAndCharts();
         let today=getTodayStr(), record=allRecords.find(r=>r.date===today && r.name===name);
-        document.getElementById("dailyLearning").value=record?(record.learning||""):"";
-        if(record && record.photo) document.getElementById("photoPreview").innerHTML=`<img src="${record.photo}" class="photo-preview" alt="Check-in photo">`;
-        else document.getElementById("photoPreview").innerHTML="";
+        if(record) {
+            document.getElementById("dailyLearning").value=record.learning||"";
+            document.getElementById("referralIpd").value=record.ipd||"";
+            document.getElementById("referralPatient").value=record.patient||"";
+            document.getElementById("referralDept").value=record.dept||"";
+            document.getElementById("referralStatus").value=record.refStatus||"Pending";
+            document.getElementById("referralDone").checked=record.referralDone||false;
+            document.getElementById("ratingValue").value=record.rating||0;
+            document.getElementById("dailyRemarks").value=record.remarks||"";
+            updateStars(record.rating||0);
+            if(record.photo) document.getElementById("photoPreview").innerHTML=`<img src="${record.photo}" class="photo-preview" alt="Check-in photo">`;
+            else document.getElementById("photoPreview").innerHTML="";
+        } else {
+            document.getElementById("dailyLearning").value="";
+            document.getElementById("referralIpd").value="";
+            document.getElementById("referralPatient").value="";
+            document.getElementById("referralDept").value="";
+            document.getElementById("referralStatus").value="Pending";
+            document.getElementById("referralDone").checked=false;
+            document.getElementById("ratingValue").value=0;
+            document.getElementById("dailyRemarks").value="";
+            updateStars(0);
+            document.getElementById("photoPreview").innerHTML="";
+        }
         updateCountdown();
     }
 
-    // Charts
+    // ==================== STAR RATING ====================
+    function updateStars(val) {
+        document.querySelectorAll('.star').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.value) <= val);
+            el.innerText = parseInt(el.dataset.value) <= val ? '★' : '☆';
+        });
+    }
+    document.querySelectorAll('.star').forEach(el => {
+        el.addEventListener('click', function() {
+            let val = parseInt(this.dataset.value);
+            document.getElementById('ratingValue').value = val;
+            updateStars(val);
+        });
+        el.addEventListener('mouseenter', function() {
+            let val = parseInt(this.dataset.value);
+            document.querySelectorAll('.star').forEach(e => {
+                e.innerText = parseInt(e.dataset.value) <= val ? '★' : '☆';
+            });
+        });
+        el.addEventListener('mouseleave', function() {
+            let cur = parseInt(document.getElementById('ratingValue').value) || 0;
+            updateStars(cur);
+        });
+    });
+
+    // ==================== CHARTS ====================
     function getCssVar(n){return getComputedStyle(document.body).getPropertyValue(n).trim();}
     function drawBarChart(id,labels,data){
-        let c=document.getElementById(id);if(!c)return;let ctx=c.getContext('2d'),w=Math.min(c.parentElement.clientWidth,600),h=300;c.width=w;c.height=h;ctx.clearRect(0,0,w,h);
-        if(!data.length||data.every(v=>v===0)){ctx.fillStyle=getCssVar('--text-secondary');ctx.font='14px sans-serif';ctx.fillText('No data',w/2-40,h/2);return;}
-        let bw=(w/data.length)*0.6,sx=(w/data.length-bw)/2,maxV=Math.max(...data,1),scale=(h-50)/maxV;
-        for(let i=0;i<data.length;i++){let x=i*(w/data.length)+sx,bh=data[i]*scale;ctx.fillStyle=getCssVar('--chart-bar');ctx.fillRect(x,h-bh-20,bw,bh);ctx.fillStyle=getCssVar('--chart-text');ctx.font='10px sans-serif';ctx.fillText(labels[i].slice(5),x+bw/4,h-5);}
+        let c=document.getElementById(id); if(!c)return; let ctx=c.getContext('2d'), w=Math.min(c.parentElement.clientWidth,600), h=300; c.width=w; c.height=h; ctx.clearRect(0,0,w,h);
+        if(!data.length||data.every(v=>v===0)){ ctx.fillStyle=getCssVar('--text-secondary'); ctx.font='14px sans-serif'; ctx.fillText('No data',w/2-40,h/2); return; }
+        let bw=(w/data.length)*0.6, sx=(w/data.length-bw)/2, maxV=Math.max(...data,1), scale=(h-50)/maxV;
+        for(let i=0;i<data.length;i++){ let x=i*(w/data.length)+sx, bh=data[i]*scale; ctx.fillStyle=getCssVar('--chart-bar'); ctx.fillRect(x,h-bh-20,bw,bh); ctx.fillStyle=getCssVar('--chart-text'); ctx.font='10px sans-serif'; ctx.fillText(labels[i].slice(5),x+bw/4,h-5);}
     }
     function drawPieChart(id,data,labels){
-        let c=document.getElementById(id);if(!c)return;let ctx=c.getContext('2d'),size=Math.min(c.parentElement.clientWidth,300);c.width=size;c.height=size;ctx.clearRect(0,0,size,size);
-        let total=data.reduce((a,b)=>a+b,0);if(total===0){ctx.fillStyle=getCssVar('--text-secondary');ctx.fillText('No data',size/2-30,size/2);return;}
-        let start=-Math.PI/2,colors=[getCssVar('--chart-pie-1'),getCssVar('--chart-pie-2')];
-        for(let i=0;i<data.length;i++){let angle=(data[i]/total)*Math.PI*2;ctx.beginPath();ctx.fillStyle=colors[i%colors.length];ctx.moveTo(size/2,size/2);ctx.arc(size/2,size/2,size/2,start,start+angle);ctx.fill();start+=angle;}
-        ctx.fillStyle=getCssVar('--chart-text');ctx.font='12px sans-serif';let y=size+15;
-        for(let i=0;i<labels.length;i++){ctx.fillStyle=colors[i];ctx.fillRect(10,y+i*18,12,12);ctx.fillStyle=getCssVar('--chart-text');ctx.fillText(`${labels[i]}: ${data[i]}`,30,y+i*18+10);}
+        let c=document.getElementById(id); if(!c)return; let ctx=c.getContext('2d'), size=Math.min(c.parentElement.clientWidth,300); c.width=size; c.height=size; ctx.clearRect(0,0,size,size);
+        let total=data.reduce((a,b)=>a+b,0); if(total===0){ ctx.fillStyle=getCssVar('--text-secondary'); ctx.fillText('No data',size/2-30,size/2); return; }
+        let start=-Math.PI/2, colors=[getCssVar('--chart-pie-1'),getCssVar('--chart-pie-2')];
+        for(let i=0;i<data.length;i++){ let angle=(data[i]/total)*Math.PI*2; ctx.beginPath(); ctx.fillStyle=colors[i%colors.length]; ctx.moveTo(size/2,size/2); ctx.arc(size/2,size/2,size/2,start,start+angle); ctx.fill(); start+=angle;}
+        ctx.fillStyle=getCssVar('--chart-text'); ctx.font='12px sans-serif'; let y=size+15;
+        for(let i=0;i<labels.length;i++){ ctx.fillStyle=colors[i]; ctx.fillRect(10,y+i*18,12,12); ctx.fillStyle=getCssVar('--chart-text'); ctx.fillText(`${labels[i]}: ${data[i]}`,30,y+i*18+10);}
     }
     function drawLineChart(id,labels,data){
-        let c=document.getElementById(id);if(!c)return;let ctx=c.getContext('2d'),w=Math.min(c.parentElement.clientWidth,600),h=300;c.width=w;c.height=h;ctx.clearRect(0,0,w,h);
-        if(data.length<2){ctx.fillStyle=getCssVar('--text-secondary');ctx.fillText('Need 2+ days for trend',w/2-80,h/2);return;}
-        let maxV=Math.max(...data,1),sx=w/(data.length-1),sy=(h-40)/maxV;ctx.beginPath();ctx.strokeStyle=getCssVar('--chart-line');ctx.lineWidth=2;
-        for(let i=0;i<data.length;i++){let x=i*sx,y=h-(data[i]*sy)-20;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();
-        for(let i=0;i<data.length;i++){let x=i*sx,y=h-(data[i]*sy)-20;ctx.fillStyle=getCssVar('--chart-line');ctx.beginPath();ctx.arc(x,y,4,0,2*Math.PI);ctx.fill();ctx.fillStyle=getCssVar('--chart-text');ctx.fillText(labels[i].slice(5),x-10,h-5);}
+        let c=document.getElementById(id); if(!c)return; let ctx=c.getContext('2d'), w=Math.min(c.parentElement.clientWidth,600), h=300; c.width=w; c.height=h; ctx.clearRect(0,0,w,h);
+        if(data.length<2){ ctx.fillStyle=getCssVar('--text-secondary'); ctx.fillText('Need 2+ days',w/2-50,h/2); return; }
+        let maxV=Math.max(...data,1), sx=w/(data.length-1), sy=(h-40)/maxV; ctx.beginPath(); ctx.strokeStyle=getCssVar('--chart-line'); ctx.lineWidth=2;
+        for(let i=0;i<data.length;i++){ let x=i*sx, y=h-(data[i]*sy)-20; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke();
+        for(let i=0;i<data.length;i++){ let x=i*sx, y=h-(data[i]*sy)-20; ctx.fillStyle=getCssVar('--chart-line'); ctx.beginPath(); ctx.arc(x,y,4,0,2*Math.PI); ctx.fill(); ctx.fillStyle=getCssVar('--chart-text'); ctx.fillText(labels[i].slice(5),x-10,h-5);}
     }
 
-    function getDateRange(){let end=new Date(),start;if(currentRange&&!customStartDate){start=new Date();start.setDate(start.getDate()-currentRange);}else if(customStartDate&&customEndDate){start=new Date(customStartDate);end=new Date(customEndDate);}else{start=new Date();start.setDate(start.getDate()-30);}return{start,end};}
+    function getDateRange(){ let end=new Date(), start; if(currentRange && !customStartDate){ start=new Date(); start.setDate(start.getDate()-currentRange); } else if(customStartDate&&customEndDate){ start=new Date(customStartDate); end=new Date(customEndDate); } else { start=new Date(); start.setDate(start.getDate()-30); } return {start,end}; }
     function getFilteredDataForCharts(){
-        if(!currentIntern)return{barDates:[],barData:[],fullDays:0,halfDays:0,trendLabels:[],trendData:[]};
-        let{start,end}=getDateRange(),records=allRecords.filter(r=>r.name===currentIntern),dates=[],cur=new Date(start);
-        while(cur<=end){dates.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
-        let attMap=new Map();records.forEach(r=>{if(r.status==="Full Day"||r.status==="Half Day")attMap.set(r.date,1);});
+        if(!currentIntern)return {barDates:[],barData:[],fullDays:0,halfDays:0,trendLabels:[],trendData:[]};
+        let {start,end}=getDateRange(), records=allRecords.filter(r=>r.name===currentIntern), dates=[], cur=new Date(start);
+        while(cur<=end){ dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+        let attMap=new Map(); records.forEach(r=>{ if(r.status==="Full Day"||r.status==="Half Day") attMap.set(r.date,1); });
         let barData=dates.map(d=>attMap.has(d)?1:0);
         let recRange=records.filter(r=>r.date>=start.toISOString().slice(0,10)&&r.date<=end.toISOString().slice(0,10));
-        let fullDays=recRange.filter(r=>r.status==="Full Day").length, halfDays=recRange.filter(r=>r.status==="Half Day").length;
-        let sorted=recRange.filter(r=>r.status!=="Leave").sort((a,b)=>a.date.localeCompare(b.date)),cum=[],cumLabels=[],cnt=0;
-        for(let rec of sorted){cnt++;cum.push(cnt);cumLabels.push(rec.date);}
-        return{barDates,barData,fullDays,halfDays,trendLabels:cumLabels,trendData:cum};
+        let fullDays=recRange.filter(r=>r.status==="Full Day").length;
+        let halfDays=recRange.filter(r=>r.status==="Half Day").length;
+        let sorted=recRange.filter(r=>r.status!=="Leave" && r.status!=="Absent").sort((a,b)=>a.date.localeCompare(b.date));
+        let cum=[], cumLabels=[], cnt=0;
+        for(let rec of sorted){ cnt++; cum.push(cnt); cumLabels.push(rec.date); }
+        return {barDates,barData,fullDays,halfDays,trendLabels:cumLabels,trendData:cum};
     }
 
     function renderTableAndCharts(){
         let search=document.getElementById("searchLearning").value.toLowerCase();
         let data=currentIntern?allRecords.filter(r=>r.name===currentIntern):allRecords;
-        if(search)data=data.filter(r=>(r.learning||"").toLowerCase().includes(search)||(r.remark||"").toLowerCase().includes(search));
-        let tbody=document.querySelector("#recordsTable tbody");tbody.innerHTML="";
+        if(search) data=data.filter(r=>(r.learning||"").toLowerCase().includes(search)||(r.remark||"").toLowerCase().includes(search)||(r.patient||"").toLowerCase().includes(search));
+        let tbody=document.querySelector("#recordsTable tbody"); tbody.innerHTML="";
         for(let rec of data){
-            let row=tbody.insertRow();row.insertCell(0).innerText=rec.date;row.insertCell(1).innerText=rec.name;row.insertCell(2).innerText=rec.checkInTime||"--";row.insertCell(3).innerText=rec.checkOutTime||"--";
-            let sc=rec.status==="Full Day"?"green":(rec.status==="Half Day"?"orange":"red");row.insertCell(4).innerHTML=`<span style="color:${sc};">${rec.status}${isHoliday(rec.date)?' 🎉':''}</span>`;
-            row.insertCell(5).innerText=rec.leavesConsumed;let learn=rec.learning||rec.remark||"";if(rec.leaveReason)learn=`Leave: ${rec.leaveReason}`+(learn?`; ${learn}`:"");
-            if(isHoliday(rec.date) && rec.status!=="Leave") learn+=" (Holiday - no leave)";
-            row.insertCell(6).innerText=learn;
+            let row=tbody.insertRow();
+            row.insertCell(0).innerText=rec.date;
+            row.insertCell(1).innerText=rec.name;
+            row.insertCell(2).innerText=rec.checkInTime||"--";
+            row.insertCell(3).innerText=rec.checkOutTime||"--";
+            let sc=rec.status==="Full Day"?"green":(rec.status==="Half Day"?"orange":"red");
+            row.insertCell(4).innerHTML=`<span style="color:${sc};font-weight:bold;">${rec.status}${isHoliday(rec.date)?' 🎉':''}</span>`;
+            row.insertCell(5).innerText=rec.leavesConsumed;
+            row.insertCell(6).innerText=rec.learning||"";
+            row.insertCell(7).innerText=rec.ipd||"";
+            row.insertCell(8).innerText=rec.patient||"";
+            row.insertCell(9).innerText=rec.dept||"";
+            let statusClass = rec.refStatus ? rec.refStatus.toLowerCase().replace(/\s+/g,'-') : '';
+            row.insertCell(10).innerHTML=rec.refStatus?`<span class="status-badge status-${statusClass}">${rec.refStatus}</span>`:"";
+            row.insertCell(11).innerText=rec.referralDone?"✅":"";
+            row.insertCell(12).innerText=rec.rating?"★".repeat(rec.rating):"";
+            row.insertCell(13).innerText=rec.remarks||"";
         }
-        let{barDates,barData,fullDays,halfDays,trendLabels,trendData}=getFilteredDataForCharts();
-        drawBarChart('weeklyCanvas',barDates,barData);drawPieChart('pieCanvas',[fullDays,halfDays],['Full Day','Half Day']);drawLineChart('trendCanvas',trendLabels,trendData);
-        if(currentIntern)updateStatsDashboard(currentIntern);
+        let {barDates,barData,fullDays,halfDays,trendLabels,trendData}=getFilteredDataForCharts();
+        drawBarChart('weeklyCanvas',barDates,barData);
+        drawPieChart('pieCanvas',[fullDays,halfDays],['Full Day','Half Day']);
+        drawLineChart('trendCanvas',trendLabels,trendData);
+        if(currentIntern) updateStatsDashboard(currentIntern);
     }
 
+    // Export CSV with new columns
     function exportCSV(){
         let data=currentIntern?allRecords.filter(r=>r.name===currentIntern):allRecords;
-        let headers=["Date","Name","CheckIn","CheckOut","Status","LeavesUsed","Learning/Remark"];
+        let headers=["Date","Name","CheckIn","CheckOut","Status","LeavesUsed","Learning","IPD","Patient","Dept","RefStatus","ReferralDone","Rating","Remarks"];
         let rows=[headers.join(",")];
         for(let r of data){
-            let learn=r.learning||r.remark||"";
-            if(r.leaveReason)learn=`Leave: ${r.leaveReason}`+(learn?`; ${learn}`:"");
-            rows.push([r.date,r.name,r.checkInTime||"",r.checkOutTime||"",r.status,r.leavesConsumed,learn].join(","));
+            rows.push([
+                r.date, r.name, r.checkInTime||"", r.checkOutTime||"", r.status, r.leavesConsumed, 
+                r.learning||"", r.ipd||"", r.patient||"", r.dept||"", r.refStatus||"", r.referralDone?"Yes":"No", r.rating||0, r.remarks||""
+            ].join(","));
         }
-        let blob=new Blob([rows.join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`attendance_${currentIntern||"all"}.csv`;a.click();URL.revokeObjectURL(a.href);
+        let blob=new Blob([rows.join("\n")],{type:"text/csv"}), a=document.createElement("a");
+        a.href=URL.createObjectURL(blob); a.download=`attendance_${currentIntern||"all"}.csv`; a.click(); URL.revokeObjectURL(a.href);
     }
+
+    // Import CSV (backward compatible)
     function importCSV(file){
         let reader=new FileReader();
         reader.onload=function(e){
-            let lines=e.target.result.split("\n"),newRec=[];
-            for(let i=1;i<lines.length;i++){if(!lines[i].trim())continue;let parts=lines[i].split(",");if(parts.length>=7){newRec.push({date:parts[0],name:parts[1],checkInTime:parts[2]||"",checkOutTime:parts[3]||"",status:parts[4],leavesConsumed:parseFloat(parts[5])||0,learning:parts[6],remark:parts[6],leaveDays:0,leaveReason:""});}}
-            allRecords.push(...newRec);saveRecords();updateUI(currentIntern);showToast(`Imported ${newRec.length} records`);
-        };reader.readAsText(file);
+            let text=e.target.result.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+            let lines=text.split("\n");
+            let newRec=[];
+            for(let i=1;i<lines.length;i++){
+                if(!lines[i].trim()) continue;
+                let parts=lines[i].split(",").map(p=>p.trim().replace(/^"|"$/g,''));
+                if(parts.length>=7){
+                    let rec={
+                        date: parts[0]||"",
+                        name: parts[1]||"",
+                        checkInTime: parts[2]||"",
+                        checkOutTime: parts[3]||"",
+                        status: parts[4]||"",
+                        leavesConsumed: parseFloat(parts[5])||0,
+                        learning: parts[6]||"",
+                        ipd: parts[7]||"",
+                        patient: parts[8]||"",
+                        dept: parts[9]||"",
+                        refStatus: parts[10]||"Pending",
+                        referralDone: parts[11]?.toLowerCase()==="yes"?true:false,
+                        rating: parseInt(parts[12])||0,
+                        remarks: parts[13]||"",
+                        leaveDays:0, leaveReason:"", remark:"", photo:null, deducted:true
+                    };
+                    newRec.push(rec);
+                }
+            }
+            allRecords.push(...newRec);
+            saveRecords(); updateUI(currentIntern);
+            showToast(`Imported ${newRec.length} records`);
+        };
+        reader.readAsText(file);
     }
-    function showToast(msg){let t=document.createElement("div");t.className="toast";t.innerText=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
-    function setRange(days,btn){currentRange=days;customStartDate="";customEndDate="";document.getElementById("filterStartDate").value="";document.getElementById("filterEndDate").value="";document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderTableAndCharts();showToast(`Last ${days} days`);}
-    function resetFilters(){currentRange=30;customStartDate="";customEndDate="";document.getElementById("filterStartDate").value="";document.getElementById("filterEndDate").value="";document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));let def=document.querySelector('.range-btn[data-range="30"]');if(def)def.classList.add('active');renderTableAndCharts();showToast("Reset to 30 days");}
-    function applyCustomFilter(){let s=document.getElementById("filterStartDate").value,e=document.getElementById("filterEndDate").value;if(s&&e){customStartDate=s;customEndDate=e;currentRange=null;document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));renderTableAndCharts();showToast(`Custom: ${s} to ${e}`);}else showToast("Select both dates");}
+
+    // Certificate
     function generatePDFCertificate(){
-        if(!currentIntern){alert("Enter your name first");return;}
-        const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-        doc.setFillColor(44,125,160);doc.rect(0,0,297,210,'F');
-        doc.setTextColor(255,255,255);doc.setFontSize(28);doc.text("Certificate of Attendance",297/2,40,{align:'center'});
-        doc.setTextColor(255,255,255);doc.setFontSize(16);doc.text(`This certificate is proudly presented to`,297/2,70,{align:'center'});
-        doc.setTextColor(255,215,0);doc.setFontSize(32);doc.text(currentIntern,297/2,95,{align:'center'});
-        doc.setTextColor(255,255,255);doc.setFontSize(14);let stats=document.getElementById("attendancePercent").innerText;
-        doc.text(`For outstanding attendance performance with ${stats} attendance rate`,297/2,125,{align:'center'});
-        doc.setFontSize(12);doc.text(`Generated on ${new Date().toLocaleDateString()}`,297/2,180,{align:'center'});
+        if(!currentIntern){ alert("Enter your name first"); return; }
+        const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+        doc.setFillColor(44,125,160); doc.rect(0,0,297,210,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(28); doc.text("Certificate of Attendance",297/2,40,{align:'center'});
+        doc.setTextColor(255,255,255); doc.setFontSize(16); doc.text("This certificate is proudly presented to",297/2,70,{align:'center'});
+        doc.setTextColor(255,215,0); doc.setFontSize(32); doc.text(currentIntern,297/2,95,{align:'center'});
+        doc.setTextColor(255,255,255); doc.setFontSize(14); let stats=document.getElementById("attendancePercent").innerText;
+        doc.text(`With ${stats} attendance rate`,297/2,125,{align:'center'});
+        doc.setFontSize(12); doc.text(`Generated on ${new Date().toLocaleDateString()}`,297/2,180,{align:'center'});
         doc.save(`Attendance_Certificate_${currentIntern}.pdf`);
         showToast("Certificate generated!");
     }
 
+    // Photo
     function capturePhoto(){
-        if(!currentIntern){alert("Enter your name first");return;}
-        let input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';
+        if(!currentIntern){ alert("Enter name first"); return; }
+        let input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.capture='environment';
         input.onchange=(e)=>{
-            let file=e.target.files[0];if(!file)return;
-            let reader=new FileReader();reader.onload=(ev)=>{photoData=ev.target.result;recordCheckIn(currentIntern,photoData);};reader.readAsDataURL(file);
-        };input.click();
+            let file=e.target.files[0]; if(!file)return;
+            let reader=new FileReader(); reader.onload=(ev)=>{ photoData=ev.target.result; recordCheckIn(currentIntern,photoData); }; reader.readAsDataURL(file);
+        }; input.click();
     }
 
-    // Admin Test Mode functions
-    function enableTestMode() { testModeEnabled = true; document.getElementById("testPanel").classList.remove("hidden"); updateTestStatus(); showToast("Test Mode Enabled - Simulating time/date"); updateButtonState(); }
-    function disableTestMode() { testModeEnabled = false; simulatedDateOffset = 0; simulatedTime = new Date().toTimeString().slice(0,8); document.getElementById("testPanel").classList.add("hidden"); updateTestStatus(); showToast("Test Mode Disabled - Using real device time"); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); updateButtonState(); }
-    function updateTestStatus() { let msgSpan = document.getElementById("testStatusMsg"); if(testModeEnabled) { let offset = simulatedDateOffset === 0 ? " (real date)" : ` +${simulatedDateOffset} day(s)`; msgSpan.innerHTML = `⚙️ Test Active | Time: ${simulatedTime.slice(0,5)} | Date offset:${offset}`; } else { msgSpan.innerHTML = "Test Mode Disabled"; } updateButtonState(); }
-    function populateTimeSelect() { let select = document.getElementById("testTimeSelect"); select.innerHTML = ""; for(let h=0;h<=23;h++) { for(let m=0;m<60;m+=5) { let time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:00`; let opt = document.createElement("option"); opt.value = time; opt.textContent = time.slice(0,5); select.appendChild(opt); } } select.value = "09:00:00"; simulatedTime = "09:00:00"; }
+    // Admin Test Mode
+    function enableTestMode(){ testModeEnabled=true; document.getElementById("testPanel").classList.remove("hidden"); updateTestStatus(); showToast("Test Mode Enabled"); updateButtonState(); }
+    function disableTestMode(){ testModeEnabled=false; simulatedDateOffset=0; simulatedTime=new Date().toTimeString().slice(0,8); document.getElementById("testPanel").classList.add("hidden"); updateTestStatus(); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); updateButtonState(); }
+    function updateTestStatus(){ let msgSpan=document.getElementById("testStatusMsg"); if(testModeEnabled){ let offset=simulatedDateOffset===0?" (real date)":` +${simulatedDateOffset} day(s)`; msgSpan.innerHTML=`⚙️ Test Active | Time: ${simulatedTime.slice(0,5)} | Date offset:${offset}`; } else { msgSpan.innerHTML="Test Mode Disabled"; } updateButtonState(); }
+    function populateTimeSelect(){ let select=document.getElementById("testTimeSelect"); select.innerHTML=""; for(let h=0;h<=23;h++){ for(let m=0;m<60;m+=5){ let time=`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:00`; let opt=document.createElement("option"); opt.value=time; opt.textContent=time.slice(0,5); select.appendChild(opt); } } select.value="09:00:00"; simulatedTime="09:00:00"; }
+
+    // Misc
+    function showToast(msg){ let t=document.createElement("div"); t.className="toast"; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
+    function setRange(days,btn){ currentRange=days; customStartDate=""; customEndDate=""; document.getElementById("filterStartDate").value=""; document.getElementById("filterEndDate").value=""; document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active')); if(btn)btn.classList.add('active'); renderTableAndCharts(); showToast(`Last ${days} days`); }
+    function resetFilters(){ currentRange=30; customStartDate=""; customEndDate=""; document.getElementById("filterStartDate").value=""; document.getElementById("filterEndDate").value=""; document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active')); let def=document.querySelector('.range-btn[data-range="30"]'); if(def)def.classList.add('active'); renderTableAndCharts(); showToast("Reset to 30 days"); }
+    function applyCustomFilter(){ let s=document.getElementById("filterStartDate").value, e=document.getElementById("filterEndDate").value; if(s&&e){ customStartDate=s; customEndDate=e; currentRange=null; document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active')); renderTableAndCharts(); showToast(`Custom: ${s} to ${e}`); } else showToast("Select both dates"); }
 
     // Live clock
-    function updateLiveClock(){let n=new Date();document.getElementById("liveClock").innerText=n.toLocaleTimeString();document.getElementById("liveDate").innerText=n.toLocaleDateString();updateButtonState();}
+    function updateLiveClock(){ let n=new Date(); document.getElementById("liveClock").innerText=n.toLocaleTimeString(); document.getElementById("liveDate").innerText=n.toLocaleDateString(); updateButtonState(); }
     setInterval(updateLiveClock,1000);
 
-    // Event listeners
-    document.getElementById("internName").addEventListener("input",(e)=>{let n=e.target.value.trim();if(n){currentIntern=n;localStorage.setItem("saved_intern_name",n);updateUI(n);}});
-    document.getElementById("checkInBtn").onclick=()=>{let n=document.getElementById("internName").value.trim();if(n)recordCheckIn(n);else alert("Enter name");};
-    document.getElementById("checkOutBtn").onclick=()=>{let n=document.getElementById("internName").value.trim();if(n)recordCheckOut(n);else alert("Enter name");};
-    document.getElementById("takeLeaveBtn").onclick=()=>{document.getElementById("leaveModal").style.display="block";};
-    document.getElementById("confirmLeaveBtn").onclick=()=>{let n=document.getElementById("internName").value.trim(),d=parseInt(document.getElementById("leaveDays").value),r=document.getElementById("leaveReason").value.trim()||"Not specified";if(n&&d>0)recordLeave(n,d,r);document.getElementById("leaveModal").style.display="none";};
-    document.getElementById("cancelLeaveBtn").onclick=()=>{document.getElementById("leaveModal").style.display="none";};
-    document.getElementById("photoCheckInBtn").onclick=()=>{let n=document.getElementById("internName").value.trim();if(n)capturePhoto();else alert("Enter name first");};
+    // ==================== EVENT LISTENERS ====================
+    document.getElementById("internName").addEventListener("input",(e)=>{ let n=e.target.value.trim(); if(n){ currentIntern=n; localStorage.setItem("saved_intern_name",n); updateUI(n); } });
+    document.getElementById("checkInBtn").onclick=()=>{ let n=document.getElementById("internName").value.trim(); if(n) recordCheckIn(n); else alert("Enter name"); };
+    document.getElementById("checkOutBtn").onclick=()=>{ let n=document.getElementById("internName").value.trim(); if(n) recordCheckOut(n); else alert("Enter name"); };
+    document.getElementById("takeLeaveBtn").onclick=()=>{ document.getElementById("leaveModal").style.display="block"; };
+    document.getElementById("confirmLeaveBtn").onclick=()=>{ let n=document.getElementById("internName").value.trim(), d=parseInt(document.getElementById("leaveDays").value), r=document.getElementById("leaveReason").value.trim()||"Not specified"; if(n&&d>0) recordLeave(n,d,r); document.getElementById("leaveModal").style.display="none"; };
+    document.getElementById("cancelLeaveBtn").onclick=()=>{ document.getElementById("leaveModal").style.display="none"; };
+    document.getElementById("photoCheckInBtn").onclick=()=>{ let n=document.getElementById("internName").value.trim(); if(n) capturePhoto(); else alert("Enter name first"); };
     document.getElementById("getCertificateBtn").onclick=generatePDFCertificate;
-    document.getElementById("switchUserBtn").onclick=()=>{localStorage.removeItem("saved_intern_name");document.getElementById("internName").value="";currentIntern="";renderTableAndCharts();showToast("Switched user");};
-    document.getElementById("clearDataBtn").onclick=()=>{if(confirm("Delete ALL data?")){localStorage.clear();location.reload();}};
+    document.getElementById("switchUserBtn").onclick=()=>{ localStorage.removeItem("saved_intern_name"); document.getElementById("internName").value=""; currentIntern=""; renderTableAndCharts(); showToast("Switched user"); };
+    document.getElementById("clearDataBtn").onclick=()=>{ if(confirm("Delete ALL data?")){ localStorage.clear(); location.reload(); } };
     document.getElementById("exportCsvBtn").onclick=exportCSV;
-    document.getElementById("importCsvBtn").onclick=()=>{document.getElementById("importFile").click();};
-    document.getElementById("importFile").onchange=(e)=>{if(e.target.files.length)importCSV(e.target.files[0]);};
+    document.getElementById("importCsvBtn").onclick=()=>{ document.getElementById("importFile").click(); };
+    document.getElementById("importFile").onchange=(e)=>{ if(e.target.files.length) importCSV(e.target.files[0]); };
     document.getElementById("filterBtn").onclick=applyCustomFilter;
     document.getElementById("resetFilterBtn").onclick=resetFilters;
     document.getElementById("searchLearning").addEventListener("input",()=>renderTableAndCharts());
-    document.getElementById("setStartDateBtn").onclick=()=>{let d=document.getElementById("startDateInput").value;if(d){internshipStartDate=d;localStorage.setItem("internship_start_date",d);updateCountdown();updateStatsDashboard(currentIntern);showToast("Start date set");}};
-    document.getElementById("darkModeToggle").onclick=()=>{document.body.classList.toggle("dark");localStorage.setItem("dark_mode",document.body.classList.contains("dark"));renderTableAndCharts();};
-    document.querySelectorAll('.range-btn').forEach(btn=>{btn.addEventListener('click',(e)=>{let days=parseInt(btn.getAttribute('data-range'));setRange(days,btn);});});
+    document.getElementById("setStartDateBtn").onclick=()=>{ let d=document.getElementById("startDateInput").value; if(d){ internshipStartDate=d; localStorage.setItem("internship_start_date",d); updateCountdown(); updateStatsDashboard(currentIntern); showToast("Start date set"); } };
+    document.getElementById("darkModeToggle").onclick=()=>{ document.body.classList.toggle("dark"); localStorage.setItem("dark_mode",document.body.classList.contains("dark")); renderTableAndCharts(); };
+    document.querySelectorAll('.range-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ let days=parseInt(btn.getAttribute('data-range')); setRange(days,btn); }); });
 
-    // Admin Test Mode listeners
-    let adminTestBtn = document.getElementById("adminTestBtn");
-    let passwordModal = document.getElementById("passwordModal");
-    let closePasswordModal = document.getElementById("closePasswordModal");
-    let submitPasswordBtn = document.getElementById("submitPasswordBtn");
-    let adminPasswordInput = document.getElementById("adminPassword");
-    let disableTestBtn = document.getElementById("disableTestBtn");
-    let testTimeSelect = document.getElementById("testTimeSelect");
-    let nextDayBtn = document.getElementById("nextDayBtn");
-    adminTestBtn.onclick = () => { passwordModal.style.display = "flex"; };
-    closePasswordModal.onclick = () => { passwordModal.style.display = "none"; adminPasswordInput.value = ""; };
-    submitPasswordBtn.onclick = () => {
-        if (adminPasswordInput.value === ADMIN_PASSWORD) {
-            passwordModal.style.display = "none";
-            enableTestMode();
-            adminPasswordInput.value = "";
-        } else {
-            alert("Incorrect password. Contact Dr. Pratik Jadhao.");
-            adminPasswordInput.value = "";
-        }
+    // Admin Test Mode
+    let adminTestBtn=document.getElementById("adminTestBtn"), passwordModal=document.getElementById("passwordModal"), closePasswordModal=document.getElementById("closePasswordModal"), submitPasswordBtn=document.getElementById("submitPasswordBtn"), adminPasswordInput=document.getElementById("adminPassword"), disableTestBtn=document.getElementById("disableTestBtn"), testTimeSelect=document.getElementById("testTimeSelect"), nextDayBtn=document.getElementById("nextDayBtn");
+    adminTestBtn.onclick=()=>{ passwordModal.style.display="flex"; };
+    closePasswordModal.onclick=()=>{ passwordModal.style.display="none"; adminPasswordInput.value=""; };
+    submitPasswordBtn.onclick=()=>{
+        if(adminPasswordInput.value===ADMIN_PASSWORD){ passwordModal.style.display="none"; enableTestMode(); adminPasswordInput.value=""; }
+        else { alert("Incorrect password."); adminPasswordInput.value=""; }
     };
-    disableTestBtn.onclick = () => { disableTestMode(); };
-    testTimeSelect.onchange = (e) => { if(testModeEnabled) { simulatedTime = e.target.value; updateTestStatus(); } };
-    nextDayBtn.onclick = () => { if(testModeEnabled) { simulatedDateOffset++; updateTestStatus(); showToast(`Test date +${simulatedDateOffset} day(s)`); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); } };
+    disableTestBtn.onclick=()=>{ disableTestMode(); };
+    testTimeSelect.onchange=(e)=>{ if(testModeEnabled){ simulatedTime=e.target.value; updateTestStatus(); } };
+    nextDayBtn.onclick=()=>{ if(testModeEnabled){ simulatedDateOffset++; updateTestStatus(); showToast(`Test date +${simulatedDateOffset} day(s)`); if(currentIntern) updateUI(currentIntern); else renderTableAndCharts(); } };
 
     // Modals
-    let aboutModal=document.getElementById("aboutModal"),aboutBtn=document.getElementById("aboutBtn"),closeAboutBtn=document.getElementById("closeAboutBtn");
-    let helpModal=document.getElementById("helpModal"),helpBtn=document.getElementById("helpBtn"),closeHelpBtn=document.getElementById("closeHelpBtn");
-    aboutBtn.onclick=()=>aboutModal.style.display="flex";closeAboutBtn.onclick=()=>aboutModal.style.display="none";
-    helpBtn.onclick=()=>helpModal.style.display="flex";closeHelpBtn.onclick=()=>helpModal.style.display="none";
-    window.onclick=(e)=>{if(e.target===aboutModal)aboutModal.style.display="none";if(e.target===helpModal)helpModal.style.display="none";if(e.target===passwordModal)passwordModal.style.display="none";};
+    let aboutModal=document.getElementById("aboutModal"), aboutBtn=document.getElementById("aboutBtn"), closeAboutBtn=document.getElementById("closeAboutBtn");
+    let helpModal=document.getElementById("helpModal"), helpBtn=document.getElementById("helpBtn"), closeHelpBtn=document.getElementById("closeHelpBtn");
+    aboutBtn.onclick=()=>aboutModal.style.display="flex"; closeAboutBtn.onclick=()=>aboutModal.style.display="none";
+    helpBtn.onclick=()=>helpModal.style.display="flex"; closeHelpBtn.onclick=()=>helpModal.style.display="none";
+    window.onclick=(e)=>{ if(e.target===aboutModal) aboutModal.style.display="none"; if(e.target===helpModal) helpModal.style.display="none"; if(e.target===passwordModal) passwordModal.style.display="none"; };
 
-    // Initialize app
+    // Init
     populateTimeSelect();
     loadData();
     updateLiveClock();
     if(currentIntern) updateUI(currentIntern);
     else renderTableAndCharts();
     document.querySelector('.range-btn[data-range="30"]')?.classList.add('active');
-    currentRange = 30;
-    renderTableAndCharts();
-    
-    // Request notification permission and schedule reminders
-    setTimeout(() => {
-        requestNotificationPermission();
-        scheduleReminders();
-    }, 2000);
+    currentRange=30; renderTableAndCharts();
+    setTimeout(()=>{ requestNotificationPermission(); scheduleReminders(); }, 2000);
 </script>
 </body>
 </html>
