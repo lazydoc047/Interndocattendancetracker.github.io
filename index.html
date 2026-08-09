@@ -1,3 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Internship Attendance Tracker | Medical College</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #1e3c72;
+            --text-secondary: #2c3e50;
+            --border: #e2e8f0;
+            --btn-primary: #2c7da0;
+            --btn-primary-hover: #1f5068;
+            --btn-success: #27ae60;
+            --btn-warning: #e67e22;
+            --btn-danger: #e74c3c;
+            --btn-purple: #8e44ad;
+            --fundraiser-bg: #fff3e0;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --stat-card: #f8f9fa;
+            --toast-bg: #333;
+            --holiday-bg: #fff3cd;
+            --holiday-text: #856404;
+            --quote-bg: rgba(59,130,246,0.08);
+        }
+        body.dark {
+            --bg: #121826;
+            --card-bg: #1e293b;
+            --text: #e2e8f0;
+            --text-secondary: #cbd5e1;
+            --border: #334155;
+            --btn-primary: #3b82f6;
+            --btn-primary-hover: #2563eb;
+            --btn-success: #10b981;
+            --btn-warning: #f59e0b;
+            --btn-danger: #ef4444;
+            --btn-purple: #a855f7;
+            --fundraiser-bg: #1e293b;
+            --modal-overlay: rgba(0,0,0,0.7);
+            --stat-card: #0f172a;
+            --toast-bg: #1e293b;
+            --holiday-bg: #2c2b1f;
+            --holiday-text: #fbbf24;
+            --quote-bg: rgba(59,130,246,0.15);
+        }
+        body { background: var(--bg); margin: 0; padding: 20px; transition: background 0.3s; color: var(--text); }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+        h1, h2, h3 { margin-top: 0; color: var(--text); }
+        .punch-buttons { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
+        button { background: var(--btn-primary); color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover:not(:disabled) { background: var(--btn-primary-hover); transform: scale(1.02); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin: 15px 0; }
+        .stat-card { background: var(--stat-card); border-radius: 20px; padding: 15px; text-align: center; border-left: 4px solid var(--btn-primary); position: relative; cursor: help; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: var(--btn-primary); }
+        .stat-label { font-size: 0.8rem; opacity: 0.8; margin-top: 5px; }
+        .tooltip-text { visibility: hidden; width: 200px; background: var(--toast-bg); color: #fff; border-radius: 8px; padding: 6px; position: absolute; bottom: 125%; left: 50%; margin-left: -100px; font-size: 12px; opacity: 0; transition: opacity 0.3s; z-index: 10; }
+        .stat-card:hover .tooltip-text { visibility: visible; opacity: 1; }
+        .leave-status, .streak-card, .countdown-card { background: rgba(59,130,246,0.08); padding: 15px; border-radius: 20px; margin: 15px 0; border-left: 4px solid var(--btn-primary); }
+        .danger { background: rgba(239,68,68,0.15); border-left-color: #ef4444; color: #ef4444; font-weight: bold; }
+        .danger-zone { background: #ef4444; color: white; padding: 12px; border-radius: 16px; text-align: center; font-size: 1.3rem; margin-top: 10px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { background: #ef4444; } 50% { background: #f87171; } 100% { background: #ef4444; } }
+        input, select, textarea { padding: 10px; font-size: 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); margin-right: 10px; }
+        textarea { width: 100%; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 16px; overflow: auto; display: block; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+        th { background: var(--btn-primary); color: white; }
+        .export-btn, .import-btn { background: var(--btn-success); margin-top: 10px; margin-right: 10px; }
+        .filter-bar, .range-buttons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px; }
+        .range-btn { background: var(--btn-primary); opacity: 0.7; padding: 6px 14px; font-size: 14px; border-radius: 30px; }
+        .range-btn.active { opacity: 1; background: var(--btn-primary-hover); }
+        canvas { max-height: 300px; margin: 20px 0; background: var(--card-bg); max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 16px; padding: 10px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--toast-bg); color: white; padding: 10px 20px; border-radius: 40px; z-index: 1000; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        @media (max-width: 600px) { body { padding: 12px; } button { padding: 8px 16px; font-size: 14px; } canvas { max-height: 200px; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        footer { text-align: center; background: var(--btn-primary); color: white; padding: 15px; border-radius: 24px; margin-top: 10px; }
+        .clock-bar { background: var(--btn-primary); color: white; padding: 10px 15px; border-radius: 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; font-weight: bold; }
+        .clock-display { font-family: monospace; font-size: 1.2rem; background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 30px; }
+        .warning-banner { background: var(--holiday-bg); color: var(--holiday-text); padding: 10px 15px; border-radius: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; border-left: 4px solid #fbbf24; }
+        .control-buttons { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 12px; z-index: 100; }
+        .control-btn { background: var(--btn-primary); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 24px; border: none; color: white; transition: 0.1s; }
+        .control-btn:hover { transform: scale(1.05); }
+        .search-box { margin-bottom: 15px; }
+        .search-box input { width: 100%; max-width: 300px; }
+        .clear-data-btn { background: var(--btn-danger); }
+        .fundraiser-card { background: var(--fundraiser-bg); border-left: 6px solid var(--btn-warning); }
+        .donate-btn { background: var(--btn-warning); display: inline-block; margin-top: 10px; text-decoration: none; color: white; padding: 10px 20px; border-radius: 40px; font-weight: bold; }
+        .beta-badge { display: inline-block; background: var(--btn-warning); color: #1e293b; font-size: 12px; padding: 2px 8px; border-radius: 20px; margin-left: 10px; vertical-align: middle; }
+        .feedback-prompt { background: rgba(59,130,246,0.12); border-radius: 20px; padding: 15px; text-align: center; margin-top: 20px; border: 1px solid var(--border); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-content { background: var(--card-bg); max-width: 500px; width: 90%; border-radius: 28px; padding: 20px; position: relative; color: var(--text); border: 1px solid var(--border); max-height: 80vh; overflow-y: auto; }
+        .modal-close { position: absolute; top: 12px; right: 20px; font-size: 28px; cursor: pointer; background: none; border: none; color: var(--text); }
+        .chart-container { text-align: center; margin: 10px 0; }
+        .chart-title { font-size: 16px; margin-bottom: 8px; font-weight: 600; }
+        .chart-note { font-size: 12px; opacity: 0.75; margin-top: 5px; }
+        .photo-preview { max-width: 100px; max-height: 100px; border-radius: 12px; margin-top: 10px; border: 1px solid var(--border); }
+        .test-bar { background: rgba(245,158,11,0.15); border-radius: 40px; padding: 8px 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; justify-content: space-between; font-size: 14px; margin-top: 10px; border: 1px solid var(--border); }
+        .hidden { display: none; }
+        .notification-permission { background: rgba(59,130,246,0.1); padding: 8px 12px; border-radius: 20px; font-size: 12px; display: inline-block; margin-left: 10px; }
+        .referral-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; align-items: center; }
+        .referral-row input, .referral-row select { flex: 1; min-width: 150px; }
+        .referral-entry { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--stat-card); padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; }
+        .referral-entry .ref-done { margin-left: 5px; }
+        .referral-entry .remove-ref { background: var(--btn-danger); border: none; color: white; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; cursor: pointer; }
+        .star-rating { display: flex; gap: 5px; margin: 10px 0; font-size: 28px; cursor: pointer; }
+        .star { color: #ccc; transition: 0.2s; user-select: none; }
+        .star.active { color: #f5b301; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .status-pending { background: #f39c12; color: #fff; }
+        .status-accepted { background: #2ecc71; color: #fff; }
+        .status-rejected { background: #e74c3c; color: #fff; }
+        .status-referred-to-senior { background: #3498db; color: #fff; }
+        .status-on-hold { background: #95a5a6; color: #fff; }
+        .status-completed { background: #27ae60; color: #fff; }
+        .status-transferred { background: #9b59b6; color: #fff; }
+        .quote-card { background: var(--quote-bg); border-radius: 16px; padding: 12px; margin: 10px 0; font-style: italic; text-align: center; border-left: 4px solid var(--btn-warning); }
+        .quote-author { font-weight: bold; font-style: normal; margin-top: 5px; }
+        .add-ref-btn { background: var(--btn-success); }
+    </style>
+</head>
+<body>
+<div class="control-buttons">
+    <button class="control-btn" id="darkModeToggle" title="Dark mode">🌙</button>
+    <button class="control-btn" id="adminTestBtn" title="Admin Test Mode">🔐</button>
+    <button class="control-btn" id="aboutBtn" title="About">ℹ️</button>
+    <button class="control-btn" id="helpBtn" title="Help">❓</button>
+</div>
+
+<!-- Admin Password Modal -->
+<div id="passwordModal" class="modal">
+    <div class="modal-content">
+        <button class="modal-close" id="closePasswordModal">&times;</button>
+        <h3>🔐 Admin Access</h3>
+        <p>Enter password to enable Test Mode (simulate time/date for testing)</p>
+        <input type="password" id="adminPassword" style="width:100%; padding:10px; margin:15px 0; border-radius:40px; border:1px solid var(--border);" placeholder="Password">
+        <button id="submitPasswordBtn" style="width:100%;">Unlock Test Mode</button>
+        <p style="font-size:12px; margin-top:10px;">Contact Dr. Pratik for password</p>
+    </div>
+</div>
+
+<!-- Test Mode Panel -->
+<div id="testPanel" class="test-bar hidden">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span>🧪 <strong>TEST MODE ACTIVE</strong></span>
+        <label>Simulated time:</label>
+        <select id="testTimeSelect"></select>
+        <button id="nextDayBtn" style="background:var(--btn-warning);">📅 +1 Day</button>
+        <button id="disableTestBtn" style="background:var(--btn-danger);">❌ Disable</button>
+        <span id="testStatusMsg" style="font-size:12px;"></span>
+    </div>
+</div>
+
+<!-- About & Help -->
+<div id="aboutModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeAboutBtn">&times;</button><h2>🏆 Internship Attendance Tracker</h2><p><strong>Features:</strong><br>✅ Full Day: Check‑in 8:45‑9:05 & Check‑out 12:30‑12:45<br>✅ Half Day: Any other combination<br>✅ Absent: No check‑in → 1 leave<br>✅ 15 leaves/year<br>✅ Holiday calendar<br>✅ Photo check‑in<br>✅ PDF Certificate<br>✅ CSV Import/Export<br>✅ Dark mode, streaks, graphs<br>✅ Daily motivational quotes<br>✅ Multiple referrals per day</p><p>❤️ Donate to Rural India Online</p></div></div>
+<div id="helpModal" class="modal"><div class="modal-content"><button class="modal-close" id="closeHelpBtn">&times;</button><h2>📘 How to Use</h2><p><strong>Full Day:</strong> Check‑in 8:45‑9:05 AND Check‑out 12:30‑12:45<br><strong>Half Day:</strong> Any other timing combination (or missing one)<br><strong>Absent:</strong> No check‑in → auto‑deduct 1 leave</p><p><strong>Referrals:</strong> Add multiple per day using "Add Referral" button.</p></div></div>
+
+<div class="container">
+    <!-- Clock -->
+    <div class="clock-bar">
+        <span>🕐 Current Device Time:</span>
+        <span class="clock-display" id="liveClock">--:--:--</span>
+        <span>📅 <span id="liveDate">--</span></span>
+        <span id="notificationStatus" class="notification-permission">🔔 Notification: <span id="permStatus">Checking...</span></span>
+    </div>
+    <div class="warning-banner"><span>⚠️</span><span><strong>Full Day:</strong> Check‑in 8:45‑9:05 & Check‑out 12:30‑12:45. Any other timing → Half Day. No check‑in → Absent (deducts 1 leave). <strong>Sundays are auto-skipped (no absence).</strong></span></div>
+
+    <!-- Main Card -->
+    <div class="card">
+        <h1>📋 Internship Attendance Tracker <span class="beta-badge">v3.4</span></h1>
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div><label>Your Name: </label><input type="text" id="internName" placeholder="Dr. Raj" autocomplete="off"></div>
+            <div><button id="switchUserBtn">🔄 Switch User</button><button id="clearDataBtn" class="clear-data-btn">🗑️ Clear Data</button></div>
+        </div>
+        <div class="punch-buttons">
+            <button id="checkInBtn">✅ Check In</button>
+            <button id="checkOutBtn">🏃 Check Out</button>
+            <button id="takeLeaveBtn" style="background:var(--btn-warning);">📅 Take Leave</button>
+            <button id="photoCheckInBtn" style="background:var(--btn-purple);">📸 Photo Check-In</button>
+        </div>
+        <div id="windowWarning" style="font-size:13px; color:var(--btn-danger); margin-top:-10px; margin-bottom:10px;"></div>
+
+        <!-- Learning -->
+        <div style="margin: 15px 0;">
+            <label>📖 What did you learn today?</label>
+            <textarea id="dailyLearning" rows="2" placeholder="e.g., Performed central line..."></textarea>
+        </div>
+
+        <!-- Referrals -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 10px;">🩺 Referrals Today</h3>
+            <div id="referralList"></div>
+            <div class="referral-row">
+                <input type="text" id="newRefIpd" placeholder="IPD No.">
+                <input type="text" id="newRefPatient" placeholder="Patient Name">
+                <select id="newRefDept">
+                    <option value="">Department</option>
+                    <option value="🫀 Cardiology">🫀 Cardiology</option>
+                    <option value="🧠 Neurology">🧠 Neurology</option>
+                    <option value="🫁 Pulmonology">🫁 Pulmonology</option>
+                    <option value="🩺 General Medicine">🩺 General Medicine</option>
+                    <option value="🏥 General Surgery">🏥 General Surgery</option>
+                    <option value="👶 Pediatrics">👶 Pediatrics</option>
+                    <option value="🤰 Obstetrics & Gynecology">🤰 Obstetrics & Gynecology</option>
+                    <option value="🦴 Orthopedics">🦴 Orthopedics</option>
+                    <option value="👁️ Ophthalmology">👁️ Ophthalmology</option>
+                    <option value="👂 ENT">👂 ENT</option>
+                    <option value="🩹 Dermatology">🩹 Dermatology</option>
+                    <option value="🧬 Psychiatry">🧬 Psychiatry</option>
+                    <option value="☢️ Radiology">☢️ Radiology</option>
+                    <option value="🔬 Pathology">🔬 Pathology</option>
+                    <option value="🧪 Microbiology">🧪 Microbiology</option>
+                    <option value="🩸 Hematology">🩸 Hematology</option>
+                    <option value="🫘 Nephrology">🫘 Nephrology</option>
+                    <option value="🫀 Cardiac Surgery">🫀 Cardiac Surgery</option>
+                    <option value="🧠 Neurosurgery">🧠 Neurosurgery</option>
+                    <option value="🦷 Dentistry">🦷 Dentistry</option>
+                    <option value="🧫 Oncology">🧫 Oncology</option>
+                    <option value="🧪 Biochemistry">🧪 Biochemistry</option>
+                    <option value="🏥 Emergency Medicine">🏥 Emergency Medicine</option>
+                    <option value="🏥 Anesthesiology">🏥 Anesthesiology</option>
+                    <option value="🏥 Plastic Surgery">🏥 Plastic Surgery</option>
+                    <option value="🏥 Urology">🏥 Urology</option>
+                    <option value="🏥 Vascular Surgery">🏥 Vascular Surgery</option>
+                    <option value="🏥 Rheumatology">🏥 Rheumatology</option>
+                    <option value="🏥 Endocrinology">🏥 Endocrinology</option>
+                    <option value="🏥 Gastroenterology">🏥 Gastroenterology</option>
+                    <option value="🏥 Geriatrics">🏥 Geriatrics</option>
+                    <option value="🏥 Infectious Diseases">🏥 Infectious Diseases</option>
+                    <option value="🏥 Neonatology">🏥 Neonatology</option>
+                    <option value="🏥 Physical Medicine">🏥 Physical Medicine</option>
+                    <option value="🏥 Rehabilitation">🏥 Rehabilitation</option>
+                </select>
+                <select id="newRefStatus">
+                    <option value="Pending">⏳ Pending</option>
+                    <option value="Accepted">✅ Accepted</option>
+                    <option value="Rejected">❌ Rejected</option>
+                    <option value="Referred to Senior">⬆️ Referred to Senior</option>
+                    <option value="On Hold">⏸️ On Hold</option>
+                    <option value="Completed">✔️ Completed</option>
+                    <option value="Transferred">↗️ Transferred</option>
+                </select>
+                <label><input type="checkbox" id="newRefDone"> Done</label>
+                <button id="addRefBtn" class="add-ref-btn">➕ Add Referral</button>
+            </div>
+        </div>
+
+        <!-- Rating -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 5px;">⭐ Rate Your Day</h3>
+            <div class="star-rating" id="starRating">
+                <span class="star" data-value="1">☆</span>
+                <span class="star" data-value="2">☆</span>
+                <span class="star" data-value="3">☆</span>
+                <span class="star" data-value="4">☆</span>
+                <span class="star" data-value="5">☆</span>
+            </div>
+            <input type="hidden" id="ratingValue" value="0">
+        </div>
+
+        <!-- Remarks -->
+        <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+            <label>📝 Remarks (optional)</label>
+            <textarea id="dailyRemarks" rows="2" placeholder="Any additional notes..."></textarea>
+        </div>
+
+        <div id="photoPreview"></div>
+
+        <div id="leaveModal" style="display:none; background:var(--card-bg); padding:15px; border-radius:20px; margin-top:10px;">
+            <h3>Record Leave</h3><label>Days:</label><input type="number" id="leaveDays" min="1" max="30" value="1">
+            <label>Reason:</label><input type="text" id="leaveReason" placeholder="Sick, personal">
+            <button id="confirmLeaveBtn" style="background:var(--btn-success);">Confirm</button><button id="cancelLeaveBtn">Cancel</button>
+        </div>
+        <div id="leaveDisplay" class="leave-status">Loading leaves...</div>
+        <div id="dangerZone" style="display:none;"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="card">
+        <h2>📊 Dashboard <span style="font-size:14px;">(hover numbers)</span></h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-number" id="totalFullDays">0</div><div class="stat-label">✅ Full Days</div><div class="tooltip-text">Both check‑in (8:45‑9:05) & check‑out (12:30‑12:45) on time</div></div>
+            <div class="stat-card"><div class="stat-number" id="totalHalfDays">0</div><div class="stat-label">⚠️ Half Days</div><div class="tooltip-text">Any other timing combination</div></div>
+            <div class="stat-card"><div class="stat-number" id="totalLeavesTaken">0</div><div class="stat-label">📅 Leaves Taken</div><div class="tooltip-text">Half day = 0.5, Absent = 1</div></div>
+            <div class="stat-card"><div class="stat-number" id="leavesRemaining">15</div><div class="stat-label">🌟 Leaves Left</div><div class="tooltip-text">15 - leaves taken</div></div>
+            <div class="stat-card"><div class="stat-number" id="attendancePercent">0%</div><div class="stat-label">📈 Attendance %</div><div class="tooltip-text">Present ÷ total days (Mon‑Sat, Sun excluded)</div></div>
+            <div class="stat-card"><div class="stat-number" id="currentStreakStat">0</div><div class="stat-label">🔥 Streak</div><div class="tooltip-text">Consecutive check‑ins</div></div>
+        </div>
+        <div class="streak-card">
+            <div>🏆 Motivational Boost</div>
+            <div id="quoteDisplay" class="quote-card">
+                <div id="quoteText">Loading quote...</div>
+                <div id="quoteAuthor" class="quote-author"></div>
+            </div>
+            <div id="rewardDisplay" class="reward-message"></div>
+        </div>
+        <div class="countdown-card">
+            <div>⏳ Internship Countdown</div>
+            <div id="countdownDisplay"></div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div style="margin-top:5px; font-size:14px;"><span id="totalInternshipDays">0</span> days total (1 year)</div>
+            <div style="margin-top:10px;"><label>Start date: </label><input type="date" id="startDateInput"><button id="setStartDateBtn">Set</button></div>
+        </div>
+        <div class="inline-buttons"><button id="getCertificateBtn" style="background:var(--btn-success);">📜 Get Certificate (PDF)</button></div>
+    </div>
+
+    <!-- Analytics -->
+    <div class="card">
+        <h2>📈 Analytics</h2>
+        <div class="filter-bar"><input type="date" id="filterStartDate"><input type="date" id="filterEndDate"><button id="filterBtn">Apply</button><button id="resetFilterBtn">Reset</button><button id="exportCsvBtn" class="export-btn">📎 Export CSV</button><button id="importCsvBtn" class="import-btn">📂 Import CSV</button><input type="file" id="importFile" accept=".csv" style="display:none;"></div>
+        <div class="range-buttons"><span>Quick:</span><button class="range-btn" data-range="7">7d</button><button class="range-btn" data-range="15">15d</button><button class="range-btn" data-range="30">30d</button><button class="range-btn" data-range="180">6m</button></div>
+        <div class="search-box"><input type="text" id="searchLearning" placeholder="🔍 Search learning..."></div>
+        <div class="chart-container"><div class="chart-title">📅 Daily Attendance</div><canvas id="weeklyCanvas" width="600" height="300"></canvas><div class="chart-note">Each bar = you checked in that day (Sundays excluded)</div></div>
+        <div class="chart-container"><div class="chart-title">🥧 Full vs Half Days</div><canvas id="pieCanvas" width="400" height="300"></canvas></div>
+        <div class="chart-container"><div class="chart-title">📈 Cumulative Attendance</div><canvas id="trendCanvas" width="600" height="300"></canvas></div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="card"><h2>📝 Records</h2><div style="overflow-x:auto;"><table id="recordsTable"><thead><tr><th>Date</th><th>Name</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Leaves</th><th>Learning</th><th>Referrals</th><th>⭐</th><th>Remarks</th></tr></thead><tbody></tbody></table></div></div>
+
+    <!-- Fundraiser -->
+    <div class="card fundraiser-card"><h2>❤️ Support a Cause</h2><p>Donate to <strong>Rural India Online</strong> – digital literacy in rural areas.</p><a href="https://ruralindiaonline.org/donate" target="_blank" class="donate-btn">🌾 Donate Here →</a></div>
+    <div class="feedback-prompt">💬 Feedback? Share with Dr. Pratik Jadhao. 🎮 Keep your streak alive!</div>
+    <footer>Developed by Dr. Pratik Jadhao | v3.4 | Data stays on your device</footer>
+</div>
+
 <script>
     // ==================== QUOTES ====================
     const QUOTES = [
@@ -332,7 +661,6 @@
         let record = allRecords.find(r => r.date === dateStr && r.name === name);
         if(!record) return;
         let status = getStatus(record.checkInTime, record.checkOutTime);
-        let oldStatus = record.status;
         record.status = status;
         let leavesConsumed = 0;
         if (status === "Half Day") leavesConsumed = 0.5;
@@ -579,7 +907,6 @@
             ctx.closePath();
             ctx.fillStyle = colorList[i % colorList.length];
             ctx.fill();
-            // Draw percentage text
             const midAngle = startAngle + sliceAngle / 2;
             const textRadius = radius * 0.65;
             const x = center + Math.cos(midAngle) * textRadius;
@@ -751,7 +1078,6 @@
         if (currentIntern) updateStatsDashboard(currentIntern);
     }
 
-    // Set up resize observer for charts
     function setupChartResize() {
         if (chartResizeObserver) chartResizeObserver.disconnect();
         const containers = document.querySelectorAll('.chart-container');
@@ -923,6 +1249,7 @@
     document.querySelector('.range-btn[data-range="30"]')?.classList.add('active');
     currentRange=30; renderTableAndCharts();
     setTimeout(()=>{ requestNotificationPermission(); scheduleReminders(); }, 2000);
-    // Setup resize observer after DOM is ready
     setTimeout(setupChartResize, 500);
 </script>
+</body>
+</html>
