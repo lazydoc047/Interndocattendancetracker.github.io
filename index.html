@@ -12,8 +12,8 @@
 try {
   var _cfg = JSON.parse(localStorage.getItem("interndoc_config_v1") || "{}");
   var _t = _cfg && _cfg.theme || "system";
-  var _dark = _t === "dark" || (_t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.setAttribute("data-theme", _dark ? "dark" : "light");
+  var _resolved = _t === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : _t;
+  document.documentElement.setAttribute("data-theme", _resolved);
 } catch (e) {}
 </script>
 <style>
@@ -39,7 +39,7 @@ html{-webkit-text-size-adjust:100%}
   --nav-h:62px;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
-[data-theme="dark"]{
+[data-theme="dark"], [data-theme="amoled"]{
   --bg:#0a1120; --surface:#131c2e; --surface-2:#182236; --surface-3:#1f2b42;
   --text:#e9eefb; --text-2:#a3b3ce; --text-3:#71829f;
   --border:#243149;
@@ -54,6 +54,12 @@ html{-webkit-text-size-adjust:100%}
   --purple:#a78bfa; --purple-soft:rgba(167,139,250,.16);
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -18px rgba(0,0,0,.85);
   --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+}
+[data-theme="amoled"]{
+  --bg:#000000; --surface:#0a0a0a; --surface-2:#111111; --surface-3:#191919;
+  --border:#1e1e1e;
+  --shadow:0 1px 2px rgba(0,0,0,.7), 0 14px 34px -18px rgba(0,0,0,.95);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.6);
 }
 body{
   margin:0; background:var(--bg); color:var(--text);
@@ -353,7 +359,7 @@ button{cursor:pointer;border:none;background:none}
 }
 .daypicker button.on{background:var(--primary);color:var(--primary-ink);border-color:transparent}
 
-/* Sheet */
+/* ===================== SHEET (fixed) ===================== */
 .sheet-backdrop{
   position:fixed;inset:0;background:rgba(8,14,26,.5);backdrop-filter:blur(3px);
   opacity:0;pointer-events:none;transition:opacity .22s;z-index:90;
@@ -362,14 +368,23 @@ button{cursor:pointer;border:none;background:none}
 .sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:100;background:var(--surface);
   border-radius:24px 24px 0 0;max-height:88vh;display:flex;flex-direction:column;
-  transform:translateY(101%);transition:transform .28s cubic-bezier(.25,.9,.3,1);
+  transform:translateY(101%);transition:transform .28s cubic-bezier(.25,.9,.3,1), opacity .2s, visibility 0s linear .28s;
   padding-bottom:var(--safe-b);box-shadow:0 -12px 40px rgba(0,0,0,.28);
+  pointer-events:none;
+  visibility:hidden;
 }
-.sheet.open{transform:none}
+.sheet.open{
+  transform:none;
+  pointer-events:auto;
+  visibility:visible;
+  transition:transform .28s cubic-bezier(.25,.9,.3,1), opacity .2s, visibility 0s;
+}
 @media (min-width:720px){
   .sheet{left:50%;right:auto;bottom:auto;top:50%;width:520px;border-radius:24px;
-    transform:translate(-50%,-46%) scale(.96);opacity:0;max-height:86vh}
-  .sheet.open{transform:translate(-50%,-50%) scale(1);opacity:1}
+    transform:translate(-50%,-46%) scale(.96);opacity:0;max-height:86vh;
+    pointer-events:none;visibility:hidden}
+  .sheet.open{transform:translate(-50%,-50%) scale(1);opacity:1;
+    pointer-events:auto;visibility:visible}
 }
 .sheet-grab{width:38px;height:4px;border-radius:99px;background:var(--border);margin:9px auto 0}
 @media (min-width:720px){.sheet-grab{display:none}}
@@ -411,6 +426,31 @@ button{cursor:pointer;border:none;background:none}
 .stars{display:flex;gap:4px;font-size:22px;color:var(--border)}
 .stars button{color:inherit;font-size:22px;line-height:1;padding:2px}
 .stars button.on{color:#f5b301}
+
+/* ===================== DEV PANEL ===================== */
+.dev-panel{
+  position:fixed;top:12px;left:12px;z-index:300;
+  background:rgba(15,23,42,.96);color:#e9eefb;
+  border:1px solid #f59e0b;border-radius:14px;
+  padding:10px 12px;font-size:11.5px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:290px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.dev-panel .dp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:700;color:#f59e0b;letter-spacing:.04em}
+.dev-panel .dp-head button{background:transparent;border:1px solid rgba(245,158,11,.4);color:#f59e0b;width:22px;height:22px;border-radius:6px;font-size:14px;line-height:1;display:grid;place-items:center;padding:0}
+.dev-panel .dp-row{display:flex;align-items:center;gap:5px;margin-bottom:6px;flex-wrap:wrap}
+.dev-panel button{
+  background:rgba(255,255,255,.08);color:#e9eefb;border:1px solid rgba(255,255,255,.15);
+  padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;
+}
+.dev-panel button:hover{background:rgba(255,255,255,.16)}
+.dev-panel button.on{background:#f59e0b;color:#000;border-color:transparent}
+.dev-panel input[type=time]{padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:inherit;font-family:inherit;font-size:11px;width:86px}
+.dev-panel .dp-real{font-size:10px;color:#94a3b8;margin-top:8px;line-height:1.6;border-top:1px solid rgba(255,255,255,.1);padding-top:6px}
+.dev-panel .dp-label{color:#94a3b8;min-width:44px}
+.dev-panel.min .dp-body{display:none}
+.dev-panel.min{padding:6px 10px}
 </style>
 </head>
 <body>
@@ -470,7 +510,6 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const pad2 = n => String(n).padStart(2, "0");
 const toISO = d => d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
 const fromISO = s => { const p = String(s).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); };
-const todayISO = () => toISO(new Date());
 const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
 const diffDays = (a, b) => Math.round((fromISO(b) - fromISO(a)) / 86400000);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -572,6 +611,29 @@ const state = {
   statusFilter: "all"
 };
 
+/* ------------------------------ Developer mode ------------------------------ */
+const DEV = {
+  enabled: false,
+  dateOffset: 0,        // integer days relative to real today
+  timeOverride: null,   // "HH:MM" or null
+  panelEl: null,
+  minimized: false
+};
+
+/** Returns the effective "now" for the whole app — respects DEV overrides. */
+function nowDate() {
+  const d = new Date();
+  if (DEV.enabled) {
+    if (DEV.dateOffset) d.setDate(d.getDate() + DEV.dateOffset);
+    if (DEV.timeOverride) {
+      const parts = DEV.timeOverride.split(":").map(Number);
+      if (!isNaN(parts[0])) d.setHours(parts[0], isNaN(parts[1]) ? 0 : parts[1], 0, 0);
+    }
+  }
+  return d;
+}
+const todayISO = () => toISO(nowDate());
+
 const KEYS = {
   config: "interndoc_config_v1",
   profile: "interndoc_profile_v1",
@@ -606,7 +668,6 @@ function loadState() {
   state.holidays = h && typeof h === "object" ? h : { ...DEFAULT_HOLIDAYS };
   state.streak = Object.assign({ last: null, count: 0 }, safeParse(localStorage.getItem(KEYS.streak), {}));
 
-  /* --- Migrate legacy data (v3.x) --- */
   let recs = safeParse(localStorage.getItem(KEYS.records), null);
   if (!Array.isArray(recs)) {
     const legacy = safeParse(localStorage.getItem(KEYS.legacyRecords), []);
@@ -615,7 +676,6 @@ function loadState() {
   }
   state.records = recs.filter(r => r && r.date).map(normaliseRecord);
 
-  /* Legacy profile */
   if (!state.profile.name) {
     const n = localStorage.getItem(KEYS.legacyName);
     if (n) state.profile.name = n;
@@ -624,12 +684,10 @@ function loadState() {
       if (first) state.profile.name = first.name;
     }
   }
-  /* Legacy internship start */
   if (!state.config.internshipStart) {
     const s = localStorage.getItem(KEYS.legacyStart);
     if (s) state.config.internshipStart = s;
   }
-  /* Legacy leave balance → allowance */
   if (!state.config.migrated) {
     const legacyLeaves = safeParse(localStorage.getItem(KEYS.legacyLeaves), {});
     const year = new Date().getFullYear();
@@ -647,21 +705,14 @@ function loadState() {
 function migrateLegacy(r) {
   const isHol = !!(r.date && DEFAULT_HOLIDAYS[r.date]);
   return {
-    id: uid(),
-    date: r.date,
-    name: r.name || "",
-    checkIn: r.checkInTime || "",
-    checkOut: r.checkOutTime || "",
+    id: uid(), date: r.date, name: r.name || "",
+    checkIn: r.checkInTime || "", checkOut: r.checkOutTime || "",
     isLeave: r.status === "Leave",
     isAbsent: r.status === "Absent" && !isHol,
-    leaveReason: r.leaveReason || "",
-    learning: r.learning || "",
+    leaveReason: r.leaveReason || "", learning: r.learning || "",
     remarks: r.remarks || r.remark || "",
     referrals: Array.isArray(r.referrals) ? r.referrals : [],
-    rating: r.rating || 0,
-    photo: r.photo || null,
-    audit: [],
-    createdAt: null
+    rating: r.rating || 0, photo: r.photo || null, audit: [], createdAt: null
   };
 }
 
@@ -692,7 +743,6 @@ function isWorkingDay(iso) {
   const d = fromISO(iso).getDay();
   return state.config.workDays.indexOf(d) !== -1;
 }
-
 function myRecords() {
   const n = state.profile.name || "";
   return state.records.filter(r => (r.name || "") === n);
@@ -702,7 +752,6 @@ function getRecord(iso) {
   return state.records.find(r => r.date === iso && (r.name || "") === n) || null;
 }
 
-/** Derive the display status for a date. */
 function statusFor(iso, rec) {
   if (isHoliday(iso)) return "Holiday";
   if (!isWorkingDay(iso)) return "Off Day";
@@ -765,12 +814,11 @@ function eachDay(from, to) {
 }
 function addDayDate(d) { const x = new Date(d.getTime()); x.setDate(x.getDate() + 1); return x; }
 
-/** Only counts working days that are not holidays and are on or before today. */
 function computeStats(from, to) {
   const today = todayISO();
   const eff = to > today ? today : to;
   const s = { working: 0, full: 0, half: 0, leave: 0, absent: 0, pending: 0, credit: 0, minutes: 0, percent: 0, recorded: 0 };
-  if (eff < from) { return s; }
+  if (eff < from) return s;
   for (const d of eachDay(from, eff)) {
     if (!isWorkingDay(d)) continue;
     if (isHoliday(d)) continue;
@@ -843,11 +891,7 @@ function internshipProgress() {
   const today = todayISO();
   const total = Math.max(1, diffDays(start, end) + 1);
   const elapsed = clamp(diffDays(start, today) + 1, 0, total);
-  return {
-    start, end, total, elapsed,
-    remaining: Math.max(0, total - elapsed),
-    percent: (elapsed / total) * 100
-  };
+  return { start, end, total, elapsed, remaining: Math.max(0, total - elapsed), percent: (elapsed / total) * 100 };
 }
 
 function countWorkingDays(from, to) {
@@ -895,20 +939,17 @@ function bindChart(canvas) {
   canvas._bound = true;
   const box = canvas.parentElement;
   const tip = box.querySelector(".chart-tip");
-
   const find = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = clientX - rect.left, y = clientY - rect.top;
     const hits = canvas._hits || [];
     let best = null, bd = 1e9;
     for (const p of hits) {
-      const dx = p.x - x;
-      const dy = (p.y - y) * 1.4;
+      const dx = p.x - x, dy = (p.y - y) * 1.4;
       const d = dx * dx + dy * dy;
       if (d < bd) { bd = d; best = p; }
     }
-    return bd <= 900 ? best : null; // 30px radius
+    return bd <= 900 ? best : null;
   };
   const show = (clientX, clientY) => {
     if (!tip) return;
@@ -924,7 +965,6 @@ function bindChart(canvas) {
     tip.style.top = Math.max(hit.y, th * 1.15 + 6) + "px";
   };
   const hide = () => { if (tip) tip.style.opacity = "0"; };
-
   canvas.addEventListener("mousemove", e => show(e.clientX, e.clientY));
   canvas.addEventListener("mouseleave", hide);
   canvas.addEventListener("touchstart", e => { if (e.touches[0]) show(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
@@ -938,10 +978,8 @@ function chartLine(canvas, cfg) {
   canvas._hits = [];
   bindChart(canvas);
   if (!pts.length) return;
-
   const padL = cfg.padL || 46, padR = 14, padT = 14, padB = 26;
   const cw = w - padL - padR, ch = h - padT - padB;
-
   let vals = pts.map(p => p.value);
   let min = cfg.min != null ? cfg.min : Math.min(...vals);
   let max = cfg.max != null ? cfg.max : Math.max(...vals);
@@ -952,14 +990,11 @@ function chartLine(canvas, cfg) {
   if (cfg.minZero && cfg.min == null) min = Math.min(0, min);
   if (cfg.min != null) min = cfg.min;
   if (cfg.max != null) max = cfg.max;
-
   const ticks = niceTicks(min, max, 4);
   const tMin = ticks[0], tMax = ticks[ticks.length - 1] || tMin + 1;
   const X = i => pts.length === 1 ? padL + cw / 2 : padL + (i / (pts.length - 1)) * cw;
   const Y = v => padT + ch - ((v - tMin) / (tMax - tMin || 1)) * ch;
-
   const cText = cssVar("--text-3"), cGrid = cssVar("--border"), cLine = cfg.color || cssVar("--primary");
-
   ctx.font = "10px -apple-system,system-ui,sans-serif";
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   ticks.forEach(t => {
@@ -969,7 +1004,6 @@ function chartLine(canvas, cfg) {
     ctx.fillStyle = cText;
     ctx.fillText(cfg.formatY ? cfg.formatY(t) : String(Math.round(t)), padL - 8, y);
   });
-
   if (cfg.threshold != null && cfg.threshold >= tMin && cfg.threshold <= tMax) {
     const y = Y(cfg.threshold);
     ctx.save();
@@ -981,7 +1015,6 @@ function chartLine(canvas, cfg) {
     ctx.textAlign = "left"; ctx.font = "600 9.5px -apple-system,system-ui,sans-serif";
     ctx.fillText(cfg.thresholdLabel || "Required", padL + 4, y - 8);
   }
-
   if (pts.length >= 2) {
     ctx.beginPath();
     pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
@@ -989,13 +1022,11 @@ function chartLine(canvas, cfg) {
     ctx.lineTo(X(0), padT + ch);
     ctx.closePath();
     ctx.globalAlpha = 0.12; ctx.fillStyle = cLine; ctx.fill(); ctx.globalAlpha = 1;
-
     ctx.beginPath();
     pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
     ctx.strokeStyle = cLine; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
     ctx.stroke();
   }
-
   pts.forEach((p, i) => {
     const x = X(i), y = Y(p.value);
     ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2);
@@ -1003,7 +1034,6 @@ function chartLine(canvas, cfg) {
     ctx.lineWidth = 2; ctx.strokeStyle = cLine; ctx.stroke();
     canvas._hits.push({ x, y, title: p.title || p.label, lines: p.lines || [] });
   });
-
   const maxLabels = w < 380 ? 3 : w < 560 ? 4 : 6;
   const step = Math.max(1, Math.ceil(pts.length / maxLabels));
   ctx.fillStyle = cText; ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -1022,17 +1052,13 @@ function chartBar(canvas, cfg) {
   canvas._hits = [];
   bindChart(canvas);
   if (!pts.length) return;
-
   const padL = cfg.padL || 46, padR = 14, padT = 14, padB = 26;
   const cw = w - padL - padR, ch = h - padT - padB;
-
   let max = Math.max(...pts.map(p => p.value), 0);
   const ticks = niceTicks(0, max || 1, 4);
   const tMax = ticks[ticks.length - 1] || 1;
   const Y = v => padT + ch - (v / tMax) * ch;
-
   const cText = cssVar("--text-3"), cGrid = cssVar("--border"), cBar = cfg.color || cssVar("--primary");
-
   ctx.font = "10px -apple-system,system-ui,sans-serif";
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   ticks.forEach(t => {
@@ -1042,7 +1068,6 @@ function chartBar(canvas, cfg) {
     ctx.fillStyle = cText;
     ctx.fillText(cfg.formatY ? cfg.formatY(t) : String(Math.round(t)), padL - 8, y);
   });
-
   const slot = cw / pts.length;
   const bw = Math.min(slot * 0.62, 40);
   pts.forEach((p, i) => {
@@ -1108,10 +1133,144 @@ function toast(msg, isErr) {
 }
 
 /* =========================================================================
+   DEV PANEL
+   ========================================================================= */
+function initDev() {
+  const hash = (location.hash || "").toLowerCase();
+  if (hash !== "#dev" && hash !== "#developer") return;
+  DEV.enabled = true;
+  createDevPanel();
+  // eslint-disable-next-line no-console
+  console.info("%c[InternDoc] Developer mode enabled", "color:#f59e0b;font-weight:700");
+  setTimeout(() => toast("Developer mode active"), 400);
+}
+
+function createDevPanel() {
+  if (DEV.panelEl) return;
+  const el = document.createElement("div");
+  el.className = "dev-panel";
+  el.innerHTML = `
+    <div class="dp-head">
+      <span>🧪 DEV MODE</span>
+      <button data-act="min" aria-label="Minimize" title="Minimize">−</button>
+    </div>
+    <div class="dp-body">
+      <div class="dp-row">
+        <span class="dp-label">Date</span>
+        <button data-off="-7">−7d</button>
+        <button data-off="-1">−1d</button>
+        <button data-off="0">0</button>
+        <button data-off="1">+1d</button>
+        <button data-off="7">+7d</button>
+      </div>
+      <div class="dp-row">
+        <span class="dp-label">Offset</span>
+        <strong data-bind="offset">0</strong>&nbsp;<span>day(s)</span>
+      </div>
+      <div class="dp-row">
+        <span class="dp-label">Time</span>
+        <input type="time" data-bind="time">
+        <button data-act="cleartime">Clear</button>
+      </div>
+      <div class="dp-row" style="margin-top:8px">
+        <button data-act="seed">🌱 Seed sample</button>
+        <button data-act="wipe">🗑 Wipe InternDoc</button>
+      </div>
+      <div class="dp-real" data-bind="real"></div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  DEV.panelEl = el;
+
+  el.addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const off = btn.dataset.off;
+    const act = btn.dataset.act;
+    if (off !== undefined) {
+      DEV.dateOffset = Number(off);
+      updateDevPanel();
+      refresh();
+      toast("Simulated date offset: " + (DEV.dateOffset > 0 ? "+" : "") + DEV.dateOffset + " day(s)");
+    } else if (act === "min") {
+      DEV.minimized = !DEV.minimized;
+      el.classList.toggle("min", DEV.minimized);
+    } else if (act === "cleartime") {
+      DEV.timeOverride = null;
+      updateDevPanel();
+      refresh();
+      toast("Time override cleared");
+    } else if (act === "seed") {
+      seedSampleData();
+    } else if (act === "wipe") {
+      if (confirm("Wipe ALL InternDoc data on this device? This is irreversible.")) {
+        Object.values(KEYS).forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        location.reload();
+      }
+    }
+  });
+
+  const timeInput = el.querySelector('[data-bind="time"]');
+  timeInput.addEventListener("change", e => {
+    DEV.timeOverride = e.target.value || null;
+    updateDevPanel();
+    refresh();
+    toast("Simulated time: " + (DEV.timeOverride || "real"));
+  });
+
+  updateDevPanel();
+}
+
+function updateDevPanel() {
+  if (!DEV.panelEl) return;
+  const el = DEV.panelEl;
+  el.querySelector('[data-bind="offset"]').textContent = (DEV.dateOffset > 0 ? "+" : "") + DEV.dateOffset;
+  const realNow = new Date();
+  const sim = nowDate();
+  el.querySelector('[data-bind="real"]').innerHTML =
+    "Real: " + toISO(realNow) + " " + pad2(realNow.getHours()) + ":" + pad2(realNow.getMinutes()) +
+    "<br>Sim : " + toISO(sim) + " " + pad2(sim.getHours()) + ":" + pad2(sim.getMinutes());
+  const timeInput = el.querySelector('[data-bind="time"]');
+  if (timeInput && document.activeElement !== timeInput) {
+    timeInput.value = DEV.timeOverride || "";
+  }
+}
+
+function seedSampleData() {
+  const name = state.profile.name || "Test Intern";
+  state.profile.name = name;
+  if (!state.config.internshipStart) {
+    const d = new Date(); d.setMonth(d.getMonth() - 2);
+    state.config.internshipStart = toISO(d);
+  }
+  const added = [];
+  for (let i = 1; i <= 30; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    if (d.getDay() === 0) continue;
+    const iso = toISO(d);
+    if (state.records.find(r => r.date === iso && r.name === name)) continue;
+    const cm = 45 + Math.floor(Math.random() * 18); // 45–62
+    const com = 30 + Math.floor(Math.random() * 14); // 30–43
+    added.push(normaliseRecord({
+      id: uid(), date: iso, name,
+      checkIn: "08:" + pad2(Math.min(59, cm)),
+      checkOut: "12:" + pad2(Math.min(59, com)),
+      learning: (i % 4 === 0) ? "Observed ward rounds and assisted with dressings." : "",
+      remarks: (i % 6 === 0) ? "Busy OPD day." : "",
+      referrals: [], rating: 0
+    }));
+  }
+  state.records.push(...added);
+  saveProfile(); saveConfig(); saveRecords();
+  refresh();
+  toast("Seeded " + added.length + " sample records");
+}
+
+/* =========================================================================
    VIEW: HOME
    ========================================================================= */
 function greeting() {
-  const h = new Date().getHours();
+  const h = nowDate().getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
@@ -1210,18 +1369,15 @@ function renderHome() {
       </div>
       <span class="pill ${statusPillClass(hol ? "Holiday" : st)}">${esc(hol ? "Holiday" : st)}</span>
     </div>
-
     <div class="bio-times">
       <div class="bio-time"><div class="lbl">Check-in</div><div class="val">${rec && rec.checkIn ? fmt12(rec.checkIn) : "--:--"}</div></div>
       <div class="bio-arrow" aria-hidden="true">→</div>
       <div class="bio-time"><div class="lbl">Check-out</div><div class="val">${rec && rec.checkOut ? fmt12(rec.checkOut) : "--:--"}</div></div>
     </div>
-
     <div class="bio-dur">
       ${dur > 0 ? fmtDur(dur) : "No duration recorded"}
       <span>Working time</span>
     </div>
-
     <button class="btn btn-primary btn-block" id="bioPrimary">${esc(primaryLabel)}</button>
   </div>
 
@@ -1317,7 +1473,7 @@ function healthStatus(percent) {
    ========================================================================= */
 function renderCalendar() {
   const el = $("#view-calendar");
-  if (!state.calMonth) { const n = new Date(); state.calMonth = new Date(n.getFullYear(), n.getMonth(), 1); }
+  if (!state.calMonth) { const n = nowDate(); state.calMonth = new Date(n.getFullYear(), n.getMonth(), 1); }
   const m = state.calMonth;
   const year = m.getFullYear(), month = m.getMonth();
   const first = new Date(year, month, 1);
@@ -1346,12 +1502,10 @@ function renderCalendar() {
   const monthStart = year + "-" + pad2(month + 1) + "-01";
   const monthEnd = year + "-" + pad2(month + 1) + "-" + pad2(daysInMonth);
   const isFutureMonth = monthStart > today;
-  const monthHasRecords = myRecords().some(r => r.date >= monthStart && r.date <= monthEnd);
   const ms = monthlyStats(monthStart, monthEnd);
 
   let summaryHTML = '<p class="hint">No data for this month.</p>';
-  if (monthHasRecords) summaryHTML = monthSummaryHTML(ms[0]);
-  else if (!isFutureMonth) summaryHTML = monthSummaryHTML(ms[0]);
+  if (ms.length) summaryHTML = monthSummaryHTML(ms[0]);
 
   el.innerHTML = `
   <div class="view-head"><div><h1>Calendar</h1><div class="sub">Tap a day to see or add its record</div></div></div>
@@ -1405,9 +1559,9 @@ function insightRange() {
   const today = todayISO();
   const r = state.insRange;
   if (r === "all") { const ir = internshipRange(); return { from: ir.start, to: today }; }
-  if (r === "month") { const d = new Date(); return { from: toISO(new Date(d.getFullYear(), d.getMonth(), 1)), to: today }; }
+  if (r === "month") { const d = nowDate(); return { from: toISO(new Date(d.getFullYear(), d.getMonth(), 1)), to: today }; }
   const days = Number(r) || 30;
-  return { from: toISO(addDays(new Date(), -(days - 1))), to: today };
+  return { from: toISO(addDays(nowDate(), -(days - 1))), to: today };
 }
 
 function renderInsights() {
@@ -1421,7 +1575,6 @@ function renderInsights() {
   const ir = internshipRange();
   const allStats = computeStats(ir.start, todayISO());
 
-  /* ---------- Attendance trend ---------- */
   let trendPoints = [], trendTitle = "Attendance trend";
   if (months.length > 1) {
     trendPoints = months.map(m => ({
@@ -1454,7 +1607,6 @@ function renderInsights() {
     else trendSummary = "Your attendance dropped by " + Math.abs(delta).toFixed(1) + " percentage points over this period.";
   }
 
-  /* ---------- Working time ---------- */
   const workPoints = [];
   for (const d of eachDay(from, to)) {
     if (!isWorkingDay(d) || isHoliday(d)) continue;
@@ -1467,7 +1619,6 @@ function renderInsights() {
     });
   }
 
-  /* ---------- Check-in / check-out patterns ---------- */
   const inPoints = [], outPoints = [];
   for (const r of myRecords().slice().sort((a, b) => a.date.localeCompare(b.date))) {
     if (r.date < from || r.date > to) continue;
@@ -1484,7 +1635,6 @@ function renderInsights() {
   const avgOut = outPoints.length ? Math.round(outPoints.reduce((s, p) => s + p.value, 0) / outPoints.length) : null;
   const timeFmt = v => { let h = Math.floor(v / 60), m = Math.round(v % 60); const ap = h >= 12 ? "p" : "a"; h = h % 12 || 12; return h + (m ? ":" + pad2(m) : "") + ap; };
 
-  /* ---------- Breakdown ---------- */
   const bd = [
     { label: "Full Day", value: stats.full, color: "var(--success)" },
     { label: "Half Day", value: stats.half, color: "var(--half)" },
@@ -1494,8 +1644,7 @@ function renderInsights() {
   ];
   const bdMax = Math.max(1, ...bd.map(x => x.value));
 
-  /* ---------- Projection (corrected formula) ---------- */
-  const remainingWorkingDays = countWorkingDays(toISO(addDays(new Date(), 1)), ir.end);
+  const remainingWorkingDays = countWorkingDays(toISO(addDays(nowDate(), 1)), ir.end);
   const totalWorkingDays = allStats.working + remainingWorkingDays;
   const projected = totalWorkingDays > 0 ? (allStats.credit / totalWorkingDays) * 100 : 0;
   const projStatus = projected >= state.config.requiredPercent + 2 ? { l: "ON TRACK", c: "pill-success" }
@@ -1773,9 +1922,9 @@ function renderSettings() {
 
   <div class="card">
     <div class="card-head"><h3>Profile</h3></div>
-    <div class="field"><label for="sName">Your name</label><input type="text" id="sName" value="${esc(state.profile.name)}" placeholder="Dr. Raj"></div>
-    <div class="field"><label for="sOrg">Organization</label><input type="text" id="sOrg" value="${esc(c.organization)}" placeholder="Medical College"></div>
-    <div class="field"><label for="sDept">Department</label><input type="text" id="sDept" value="${esc(c.department)}" placeholder="General Medicine"></div>
+    <div class="field"><label for="sName">Your name</label><input type="text" id="sName" value="${esc(state.profile.name)}" placeholder="Dr. Raj" autocomplete="off"></div>
+    <div class="field"><label for="sOrg">Organization</label><input type="text" id="sOrg" value="${esc(c.organization)}" placeholder="Medical College" autocomplete="off"></div>
+    <div class="field"><label for="sDept">Department</label><input type="text" id="sDept" value="${esc(c.department)}" placeholder="General Medicine" autocomplete="off"></div>
     <p class="hint">Changing your name renames your existing records so they stay visible.</p>
   </div>
 
@@ -1838,9 +1987,10 @@ function renderSettings() {
   <div class="card">
     <div class="card-head"><h3>Appearance</h3></div>
     <div class="seg" id="themeSeg">
-      ${[["light", "Light"], ["dark", "Dark"], ["system", "System"]].map(([v, l]) => '<button data-theme="' + v + '" class="' + (theme === v ? "active" : "") + '">' + l + "</button>").join("")}
+      ${[["light", "Light"], ["dark", "Dark"], ["amoled", "AMOLED"], ["system", "System"]]
+        .map(([v, l]) => '<button data-theme="' + v + '" class="' + (theme === v ? "active" : "") + '">' + l + "</button>").join("")}
     </div>
-    <p class="hint">System follows your device's light/dark preference.</p>
+    <p class="hint">AMOLED uses true black for OLED screens. System follows your device preference.</p>
   </div>
 
   <div class="card">
@@ -1868,7 +2018,7 @@ function renderSettings() {
 
   <div class="card">
     <div class="card-head"><h3>About</h3></div>
-    <p class="hint">InternDoc v4.1 — a personal biometric attendance companion made by interns, for interns.<br>Original concept by Dr. Pratik Jadhao.</p>
+    <p class="hint">InternDoc v4.2 — a personal biometric attendance companion made by interns, for interns.<br>Original concept by Dr. Pratik Jadhao.</p>
   </div>
 
   <input type="file" id="restoreInput" accept=".json" style="display:none">
@@ -1908,7 +2058,12 @@ function renderSettings() {
     saveConfig(); b.classList.toggle("on"); toast("Working days updated");
   }));
 
-  $$("#themeSeg button").forEach(b => b.addEventListener("click", () => { state.config.theme = b.dataset.theme; saveConfig(); applyTheme(); renderSettings(); }));
+  $$("#themeSeg button").forEach(b => b.addEventListener("click", () => {
+    state.config.theme = b.dataset.theme;
+    saveConfig();
+    applyTheme();
+    renderSettings();
+  }));
   $$("#view-settings [data-delhol]").forEach(b => b.addEventListener("click", () => { delete state.holidays[b.dataset.delhol]; saveHolidays(); renderSettings(); toast("Holiday removed"); }));
   $("#addHol").addEventListener("click", () => {
     const d = $("#holDate").value, n = $("#holName").value.trim();
@@ -2027,7 +2182,6 @@ function saveRecord(iso, isNew, getPhoto) {
       rec.audit.push({ at: new Date().toISOString(), changes, reason: "Manual correction" });
     }
     rec.checkIn = inT; rec.checkOut = outT; rec.remarks = note;
-    /* If the user is providing actual biometric times, the leave/absent flag no longer applies. */
     if (inT || outT) { rec.isLeave = false; rec.isAbsent = false; rec.leaveReason = ""; }
     if (photo) rec.photo = photo;
     rec.updatedAt = new Date().toISOString();
@@ -2060,12 +2214,13 @@ function openCheckoutSheet() {
   const iso = todayISO();
   const rec = getRecord(iso);
   if (!rec || !rec.checkIn) return openRecordSheet(iso);
+  const now = nowDate();
   openSheet({
     title: "Add check-out",
     body: `
       <p class="hint">Checked in at <b>${esc(fmt12(rec.checkIn))}</b>.</p>
       <div class="field" style="margin-top:13px"><label for="coTime">Check-out time</label>
-        <input type="time" id="coTime" value="${pad2(new Date().getHours())}:${pad2(new Date().getMinutes())}"></div>
+        <input type="time" id="coTime" value="${pad2(now.getHours())}:${pad2(now.getMinutes())}"></div>
       <div class="hint" id="coHint">Full day check-out window is ${fmt12(state.config.outStart)}–${fmt12(state.config.outEnd)}.</div>
     `,
     actions: [{ label: "Save check-out", class: "btn-primary", onClick: () => {
@@ -2096,7 +2251,6 @@ function openLearningSheet() {
       saveRecords(); closeSheet(); refresh(); toast("Learning saved");
     } }]
   });
-  const stars = $("#lStars");
   $$("#lStars button").forEach(b => b.addEventListener("click", () => {
     rating = Number(b.dataset.v);
     $$("#lStars button").forEach(x => x.classList.toggle("on", Number(x.dataset.v) <= rating));
@@ -2311,7 +2465,7 @@ function exportCSV() {
 
 function exportBackup() {
   const payload = {
-    app: "InternDoc", version: 4.1,
+    app: "InternDoc", version: 4.2,
     exportedAt: new Date().toISOString(),
     profile: state.profile, config: state.config,
     holidays: state.holidays, records: state.records, streak: state.streak
@@ -2460,15 +2614,18 @@ function updateStreak(iso) {
 }
 
 /* =========================================================================
-   THEME
+   THEME / DISPLAY MODES
    ========================================================================= */
 const mq = window.matchMedia("(prefers-color-scheme: dark)");
 function applyTheme() {
   const t = state.config.theme || "system";
-  const dark = t === "dark" || (t === "system" && mq.matches);
-  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  const resolved = t === "system" ? (mq.matches ? "dark" : "light") : t;
+  document.documentElement.setAttribute("data-theme", resolved);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#0a1120" : "#2563eb");
+  if (meta) {
+    const colors = { light: "#2563eb", dark: "#0a1120", amoled: "#000000" };
+    meta.setAttribute("content", colors[resolved] || "#2563eb");
+  }
 }
 if (mq.addEventListener) mq.addEventListener("change", () => { if ((state.config.theme || "system") === "system") applyTheme(); });
 else if (mq.addListener) mq.addListener(() => { if ((state.config.theme || "system") === "system") applyTheme(); });
@@ -2528,7 +2685,6 @@ function init() {
   $("#sheetBackdrop").addEventListener("click", closeSheet);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
-  /* Restore hidden file inputs used from the Records view. */
   if (!$("#restoreInput")) {
     const ri = document.createElement("input"); ri.type = "file"; ri.id = "restoreInput"; ri.accept = ".json"; ri.style.display = "none";
     ri.addEventListener("change", e => { if (e.target.files[0]) importBackup(e.target.files[0]); e.target.value = ""; });
@@ -2550,6 +2706,8 @@ function init() {
   if (state.config.notifyEnabled && "Notification" in window && Notification.permission === "granted") {
     scheduleReminders();
   }
+
+  initDev();
 }
 
 let reminderTimer = null;
