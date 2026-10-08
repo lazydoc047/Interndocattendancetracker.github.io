@@ -7,6 +7,15 @@
 <meta name="description" content="InternDoc — a personal biometric attendance companion for interns. Local-only record keeping.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>InternDoc — Personal Attendance</title>
+<script>
+/* Apply saved theme before first paint to avoid a flash. */
+try {
+  var _cfg = JSON.parse(localStorage.getItem("interndoc_config_v1") || "{}");
+  var _t = _cfg && _cfg.theme || "system";
+  var _dark = _t === "dark" || (_t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", _dark ? "dark" : "light");
+} catch (e) {}
+</script>
 <style>
 /* ===================== DESIGN TOKENS ===================== */
 *,*::before,*::after{box-sizing:border-box}
@@ -503,7 +512,8 @@ const I = {
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="m7 12 5-5 5 5"/><path d="M5 4h14"/></svg>',
   award: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="m8.5 14-1.5 7 5-2.6 5 2.6-1.5-7"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>'
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>'
 };
 
 /* ------------------------------ Defaults ------------------------------ */
@@ -550,7 +560,7 @@ const QUOTES = [
 /* ------------------------------ State ------------------------------ */
 const state = {
   view: "home",
-  config: { ...DEFAULT_CONFIG },
+  config: Object.assign({}, DEFAULT_CONFIG, { workDays: DEFAULT_CONFIG.workDays.slice() }),
   profile: { name: "", organization: "", department: "" },
   holidays: {},
   records: [],
@@ -571,8 +581,7 @@ const KEYS = {
   legacyRecords: "attendance_records",
   legacyLeaves: "attendance_leaves",
   legacyStart: "internship_start_date",
-  legacyName: "saved_intern_name",
-  legacyDark: "dark_mode"
+  legacyName: "saved_intern_name"
 };
 
 function safeParse(str, fallback) {
@@ -580,14 +589,18 @@ function safeParse(str, fallback) {
 }
 
 /* ------------------------------ Persistence ------------------------------ */
-function saveRecords() { localStorage.setItem(KEYS.records, JSON.stringify(state.records)); }
-function saveConfig() { localStorage.setItem(KEYS.config, JSON.stringify(state.config)); }
-function saveProfile() { localStorage.setItem(KEYS.profile, JSON.stringify(state.profile)); }
-function saveHolidays() { localStorage.setItem(KEYS.holidays, JSON.stringify(state.holidays)); }
-function saveStreak() { localStorage.setItem(KEYS.streak, JSON.stringify(state.streak)); }
+function saveRecords() { try { localStorage.setItem(KEYS.records, JSON.stringify(state.records)); } catch (e) { toast("Storage full — export a backup and clear old records.", true); } }
+function saveConfig() { try { localStorage.setItem(KEYS.config, JSON.stringify(state.config)); } catch (e) {} }
+function saveProfile() { try { localStorage.setItem(KEYS.profile, JSON.stringify(state.profile)); } catch (e) {} }
+function saveHolidays() { try { localStorage.setItem(KEYS.holidays, JSON.stringify(state.holidays)); } catch (e) {} }
+function saveStreak() { try { localStorage.setItem(KEYS.streak, JSON.stringify(state.streak)); } catch (e) {} }
 
 function loadState() {
-  state.config = Object.assign({}, DEFAULT_CONFIG, safeParse(localStorage.getItem(KEYS.config), {}));
+  const savedCfg = safeParse(localStorage.getItem(KEYS.config), {});
+  state.config = Object.assign({}, DEFAULT_CONFIG, savedCfg);
+  if (!Array.isArray(state.config.workDays)) state.config.workDays = DEFAULT_CONFIG.workDays.slice();
+  else state.config.workDays = state.config.workDays.slice();
+
   state.profile = Object.assign({ name: "", organization: "", department: "" }, safeParse(localStorage.getItem(KEYS.profile), {}));
   const h = safeParse(localStorage.getItem(KEYS.holidays), null);
   state.holidays = h && typeof h === "object" ? h : { ...DEFAULT_HOLIDAYS };
@@ -720,17 +733,15 @@ function workMinutes(rec) {
   const ci = toMin(rec.checkIn), co = toMin(rec.checkOut);
   if (ci == null || co == null) return 0;
   let m = co - ci;
-  if (m < 0) m += 1440; // crossed midnight
+  if (m < 0) m += 1440;
   return m;
 }
 
-/** Leave cost (in days) for a single date. Pending never deducts. */
 function leaveCost(iso, rec) {
   const s = statusFor(iso, rec);
   if (s === "Half Day") return 0.5;
   if (s === "Leave") return 1;
   if (s === "Absent") return 1;
-  if (s === "Checked In") return 0; // still in progress
   return 0;
 }
 
@@ -754,16 +765,20 @@ function eachDay(from, to) {
 }
 function addDayDate(d) { const x = new Date(d.getTime()); x.setDate(x.getDate() + 1); return x; }
 
+/** Only counts working days that are not holidays and are on or before today. */
 function computeStats(from, to) {
+  const today = todayISO();
+  const eff = to > today ? today : to;
   const s = { working: 0, full: 0, half: 0, leave: 0, absent: 0, pending: 0, credit: 0, minutes: 0, percent: 0, recorded: 0 };
-  for (const d of eachDay(from, to)) {
+  if (eff < from) { return s; }
+  for (const d of eachDay(from, eff)) {
     if (!isWorkingDay(d)) continue;
+    if (isHoliday(d)) continue;
     s.working++;
     const rec = getRecord(d);
     const st = statusFor(d, rec);
     if (st === "Full Day") { s.full++; s.credit += 1; s.minutes += workMinutes(rec); s.recorded++; }
-    else if (st === "Half Day") { s.half++; s.credit += 0.5; s.minutes += workMinutes(rec); s.recorded++; }
-    else if (st === "Checked In") { s.half++; s.credit += 0.5; s.minutes += workMinutes(rec); s.recorded++; }
+    else if (st === "Half Day" || st === "Checked In") { s.half++; s.credit += 0.5; s.minutes += workMinutes(rec); s.recorded++; }
     else if (st === "Leave") { s.leave++; }
     else if (st === "Absent") { s.absent++; }
     else if (st === "Pending") { s.pending++; }
@@ -773,12 +788,15 @@ function computeStats(from, to) {
 }
 
 function monthlyStats(from, to) {
+  const today = todayISO();
+  const eff = to > today ? today : to;
   const map = new Map();
-  for (const d of eachDay(from, to)) {
+  for (const d of eachDay(from, eff)) {
     const k = d.slice(0, 7);
     if (!map.has(k)) map.set(k, { key: k, working: 0, credit: 0, full: 0, half: 0, leave: 0, absent: 0, pending: 0, minutes: 0 });
     const m = map.get(k);
     if (!isWorkingDay(d)) continue;
+    if (isHoliday(d)) continue;
     m.working++;
     const rec = getRecord(d); const st = statusFor(d, rec);
     if (st === "Full Day") { m.full++; m.credit += 1; m.minutes += workMinutes(rec); }
@@ -832,11 +850,16 @@ function internshipProgress() {
   };
 }
 
-/* =========================================================================
-   CHARTS — hand-rolled canvas renderers with touch-friendly tooltips
-   ========================================================================= */
-const chartRegistry = new Set();
+function countWorkingDays(from, to) {
+  if (to < from) return 0;
+  let n = 0;
+  for (const d of eachDay(from, to)) if (isWorkingDay(d) && !isHoliday(d)) n++;
+  return n;
+}
 
+/* =========================================================================
+   CHARTS
+   ========================================================================= */
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 function prepCanvas(canvas, height) {
@@ -873,33 +896,39 @@ function bindChart(canvas) {
   const box = canvas.parentElement;
   const tip = box.querySelector(".chart-tip");
 
-  const find = clientX => {
+  const find = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;
+    const y = clientY - rect.top;
     const hits = canvas._hits || [];
     let best = null, bd = 1e9;
-    for (const p of hits) { const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = p; } }
-    return bd <= 40 ? best : null;
+    for (const p of hits) {
+      const dx = p.x - x;
+      const dy = (p.y - y) * 1.4;
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = p; }
+    }
+    return bd <= 900 ? best : null; // 30px radius
   };
-  const show = clientX => {
+  const show = (clientX, clientY) => {
     if (!tip) return;
-    const hit = find(clientX);
+    const hit = find(clientX, clientY);
     if (!hit) { tip.style.opacity = "0"; return; }
     let html = '<div class="tt">' + esc(hit.title) + "</div>";
     (hit.lines || []).forEach(l => { html += '<div class="tl"><span>' + esc(l[0]) + "</span><b>" + esc(l[1]) + "</b></div>"; });
     tip.innerHTML = html;
     tip.style.opacity = "1";
     const boxRect = box.getBoundingClientRect();
-    const x = clamp(hit.x, 62, boxRect.width - 62);
-    tip.style.left = x + "px";
-    tip.style.top = Math.max(46, hit.y) + "px";
+    tip.style.left = clamp(hit.x, 62, boxRect.width - 62) + "px";
+    const th = tip.offsetHeight || 60;
+    tip.style.top = Math.max(hit.y, th * 1.15 + 6) + "px";
   };
   const hide = () => { if (tip) tip.style.opacity = "0"; };
 
-  canvas.addEventListener("mousemove", e => show(e.clientX));
+  canvas.addEventListener("mousemove", e => show(e.clientX, e.clientY));
   canvas.addEventListener("mouseleave", hide);
-  canvas.addEventListener("touchstart", e => { if (e.touches[0]) show(e.touches[0].clientX); }, { passive: true });
-  canvas.addEventListener("touchmove", e => { if (e.touches[0]) show(e.touches[0].clientX); }, { passive: true });
+  canvas.addEventListener("touchstart", e => { if (e.touches[0]) show(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  canvas.addEventListener("touchmove", e => { if (e.touches[0]) show(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
   canvas.addEventListener("touchend", () => setTimeout(hide, 2200));
 }
 
@@ -920,17 +949,17 @@ function chartLine(canvas, cfg) {
   if (max - min < 1e-9) { max = min + 1; }
   const pad = (max - min) * 0.14;
   min -= pad; max += pad;
-  if (cfg.minZero) min = Math.min(0, cfg.min != null ? cfg.min : 0);
+  if (cfg.minZero && cfg.min == null) min = Math.min(0, min);
   if (cfg.min != null) min = cfg.min;
+  if (cfg.max != null) max = cfg.max;
 
   const ticks = niceTicks(min, max, 4);
-  const tMin = ticks[0], tMax = ticks[ticks.length - 1];
+  const tMin = ticks[0], tMax = ticks[ticks.length - 1] || tMin + 1;
   const X = i => pts.length === 1 ? padL + cw / 2 : padL + (i / (pts.length - 1)) * cw;
   const Y = v => padT + ch - ((v - tMin) / (tMax - tMin || 1)) * ch;
 
   const cText = cssVar("--text-3"), cGrid = cssVar("--border"), cLine = cfg.color || cssVar("--primary");
 
-  // gridlines
   ctx.font = "10px -apple-system,system-ui,sans-serif";
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   ticks.forEach(t => {
@@ -941,7 +970,6 @@ function chartLine(canvas, cfg) {
     ctx.fillText(cfg.formatY ? cfg.formatY(t) : String(Math.round(t)), padL - 8, y);
   });
 
-  // threshold
   if (cfg.threshold != null && cfg.threshold >= tMin && cfg.threshold <= tMax) {
     const y = Y(cfg.threshold);
     ctx.save();
@@ -954,20 +982,20 @@ function chartLine(canvas, cfg) {
     ctx.fillText(cfg.thresholdLabel || "Required", padL + 4, y - 8);
   }
 
-  // area + line
-  ctx.beginPath();
-  pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  ctx.lineTo(X(pts.length - 1), padT + ch);
-  ctx.lineTo(X(0), padT + ch);
-  ctx.closePath();
-  ctx.globalAlpha = 0.12; ctx.fillStyle = cLine; ctx.fill(); ctx.globalAlpha = 1;
+  if (pts.length >= 2) {
+    ctx.beginPath();
+    pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.lineTo(X(pts.length - 1), padT + ch);
+    ctx.lineTo(X(0), padT + ch);
+    ctx.closePath();
+    ctx.globalAlpha = 0.12; ctx.fillStyle = cLine; ctx.fill(); ctx.globalAlpha = 1;
 
-  ctx.beginPath();
-  pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  ctx.strokeStyle = cLine; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-  ctx.stroke();
+    ctx.beginPath();
+    pts.forEach((p, i) => { const x = X(i), y = Y(p.value); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = cLine; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.stroke();
+  }
 
-  // points + hits
   pts.forEach((p, i) => {
     const x = X(i), y = Y(p.value);
     ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2);
@@ -976,14 +1004,14 @@ function chartLine(canvas, cfg) {
     canvas._hits.push({ x, y, title: p.title || p.label, lines: p.lines || [] });
   });
 
-  // x labels
   const maxLabels = w < 380 ? 3 : w < 560 ? 4 : 6;
   const step = Math.max(1, Math.ceil(pts.length / maxLabels));
   ctx.fillStyle = cText; ctx.textAlign = "center"; ctx.textBaseline = "top";
   ctx.font = "10px -apple-system,system-ui,sans-serif";
   pts.forEach((p, i) => {
+    if (pts.length === 1) { ctx.fillText(p.label, X(0), padT + ch + 7); return; }
     if (i % step !== 0 && i !== pts.length - 1) return;
-    if (i !== pts.length - 1 && i % step === 0 && (pts.length - 1 - i) < step * 0.5 && pts.length > 3) return;
+    if (i !== pts.length - 1 && (pts.length - 1 - i) < step * 0.6) return;
     ctx.fillText(p.label, X(i), padT + ch + 7);
   });
 }
@@ -1020,7 +1048,6 @@ function chartBar(canvas, cfg) {
   pts.forEach((p, i) => {
     const cx = padL + slot * i + slot / 2;
     const y = Y(p.value);
-    const bh = Math.max(2, padT + ch - y);
     const r = Math.min(7, bw / 2);
     ctx.beginPath();
     ctx.moveTo(cx - bw / 2, padT + ch);
@@ -1042,6 +1069,7 @@ function chartBar(canvas, cfg) {
    SHEETS
    ========================================================================= */
 let sheetOnClose = null;
+let sheetBodyScrollLocked = false;
 function openSheet(opts) {
   $("#sheetTitle").textContent = opts.title || "";
   $("#sheetBody").innerHTML = opts.body || "";
@@ -1058,12 +1086,12 @@ function openSheet(opts) {
   $("#sheet").classList.add("open");
   $("#sheetBackdrop").classList.add("open");
   sheetOnClose = opts.onClose || null;
-  document.body.style.overflow = "hidden";
+  if (!sheetBodyScrollLocked) { document.body.style.overflow = "hidden"; sheetBodyScrollLocked = true; }
 }
 function closeSheet() {
   $("#sheet").classList.remove("open");
   $("#sheetBackdrop").classList.remove("open");
-  document.body.style.overflow = "";
+  if (sheetBodyScrollLocked) { document.body.style.overflow = ""; sheetBodyScrollLocked = false; }
   if (sheetOnClose) { const f = sheetOnClose; sheetOnClose = null; f(); }
 }
 
@@ -1098,7 +1126,6 @@ function statusPillClass(s) {
     case "Absent": return "pill-absent";
     case "Holiday": return "pill-holiday";
     case "Checked In": return "pill-leave";
-    case "Not Recorded": return "pill-neutral";
     default: return "pill-neutral";
   }
 }
@@ -1108,10 +1135,11 @@ function renderHome() {
   const today = todayISO();
   const rec = getRecord(today);
   const st = statusFor(today, rec);
-  const d = new Date();
   const initials = (state.profile.name || "Intern").split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
   const dur = workMinutes(rec);
   const hol = isHoliday(today);
+  const hasHistory = myRecords().length > 0;
+  const hasPlan = !!state.config.internshipStart;
 
   let primaryLabel = "+ Add Today's Record", primaryAct = "add";
   if (rec && rec.checkIn && !rec.checkOut) { primaryLabel = "Add Check-out"; primaryAct = "checkout"; }
@@ -1123,6 +1151,36 @@ function renderHome() {
   const prog = internshipProgress();
   const lv = leaveSummary();
   const q = QUOTES[Math.floor((Date.now() / 86400000)) % QUOTES.length];
+
+  const healthCardHTML = hasHistory || hasPlan ? `
+  <div class="card">
+    <div class="card-head">
+      <div><h3>Attendance health</h3><div class="sub">Internship period · ${hs.working} working days</div></div>
+      <span class="pill ${health.cls}">${health.label}</span>
+    </div>
+    <div class="health">
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="bg" cx="60" cy="60" r="52"></circle>
+          <circle cx="60" cy="60" r="52" stroke="${health.color}" stroke-dasharray="${(clamp(hs.percent,0,100) * 3.267).toFixed(1)} 326.7"></circle>
+        </svg>
+        <div class="ring-center"><b>${hs.percent.toFixed(1)}%</b><small>ATTENDANCE</small></div>
+      </div>
+      <div class="health-info">
+        <div class="row"><span>Required</span><span>${state.config.requiredPercent}%</span></div>
+        <div class="row"><span>Buffer</span><span style="color:${health.color}">${(hs.percent - state.config.requiredPercent >= 0 ? "+" : "") + (hs.percent - state.config.requiredPercent).toFixed(1)}%</span></div>
+        <div class="row"><span>Full days</span><span>${hs.full}</span></div>
+        <div class="row"><span>Half days</span><span>${hs.half}</span></div>
+        <div class="row"><span>Leaves left</span><span>${lv.remaining}</span></div>
+      </div>
+    </div>
+    <button class="btn btn-block btn-sm" style="margin-top:13px" data-act="insights">View insights</button>
+  </div>` : `
+  <div class="card">
+    <div class="card-head"><h3>Welcome to InternDoc</h3></div>
+    <p class="hint">Set your internship start date in <b>Settings</b>, then start recording your biometric attendance. Your health, projections and progress will appear here.</p>
+    <button class="btn btn-primary btn-block" style="margin-top:12px" data-act="settings">Open settings</button>
+  </div>`;
 
   el.innerHTML = `
   <div class="view-head">
@@ -1193,29 +1251,7 @@ function renderHome() {
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <div><h3>Attendance health</h3><div class="sub">Internship period · ${hs.working} working days</div></div>
-      <span class="pill ${health.cls}">${health.label}</span>
-    </div>
-    <div class="health">
-      <div class="ring-wrap">
-        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
-          <circle class="bg" cx="60" cy="60" r="52"></circle>
-          <circle cx="60" cy="60" r="52" stroke="${health.color}" stroke-dasharray="${(clamp(hs.percent,0,100) * 3.267).toFixed(1)} 326.7"></circle>
-        </svg>
-        <div class="ring-center"><b>${hs.percent.toFixed(1)}%</b><small>ATTENDANCE</small></div>
-      </div>
-      <div class="health-info">
-        <div class="row"><span>Required</span><span>${state.config.requiredPercent}%</span></div>
-        <div class="row"><span>Buffer</span><span style="color:${health.color}">${(hs.percent - state.config.requiredPercent >= 0 ? "+" : "") + (hs.percent - state.config.requiredPercent).toFixed(1)}%</span></div>
-        <div class="row"><span>Full days</span><span>${hs.full}</span></div>
-        <div class="row"><span>Half days</span><span>${hs.half}</span></div>
-        <div class="row"><span>Leaves left</span><span>${lv.remaining}</span></div>
-      </div>
-    </div>
-    <button class="btn btn-block btn-sm" style="margin-top:13px" data-act="insights">View insights</button>
-  </div>
+  ${healthCardHTML}
 
   <div class="card">
     <div class="card-head">
@@ -1263,6 +1299,7 @@ function renderHome() {
       else if (a === "referral") openReferralSheet();
       else if (a === "remark") openRemarkSheet();
       else if (a === "insights") go("insights");
+      else if (a === "settings") go("settings");
     });
   });
 }
@@ -1306,7 +1343,15 @@ function renderCalendar() {
     cells.push('<button class="' + cls + '" data-date="' + iso + '" aria-label="' + esc(fmtLong(iso) + " — " + st) + '">' + d + dot + "</button>");
   }
 
-  const ms = monthlyStats(year + "-" + pad2(month + 1) + "-01", year + "-" + pad2(month + 1) + "-" + pad2(daysInMonth));
+  const monthStart = year + "-" + pad2(month + 1) + "-01";
+  const monthEnd = year + "-" + pad2(month + 1) + "-" + pad2(daysInMonth);
+  const isFutureMonth = monthStart > today;
+  const monthHasRecords = myRecords().some(r => r.date >= monthStart && r.date <= monthEnd);
+  const ms = monthlyStats(monthStart, monthEnd);
+
+  let summaryHTML = '<p class="hint">No data for this month.</p>';
+  if (monthHasRecords) summaryHTML = monthSummaryHTML(ms[0]);
+  else if (!isFutureMonth) summaryHTML = monthSummaryHTML(ms[0]);
 
   el.innerHTML = `
   <div class="view-head"><div><h1>Calendar</h1><div class="sub">Tap a day to see or add its record</div></div></div>
@@ -1330,8 +1375,8 @@ function renderCalendar() {
     </div>
   </div>
   <div class="card">
-    <div class="card-head"><h3>Month summary</h3></div>
-    ${ms.length ? monthSummaryHTML(ms[0]) : '<p class="hint">No data for this month.</p>'}
+    <div class="card-head"><h3>Month summary</h3>${isFutureMonth ? '<span class="pill pill-neutral">Future</span>' : ""}</div>
+    ${summaryHTML}
   </div>
   `;
 
@@ -1341,6 +1386,7 @@ function renderCalendar() {
 }
 
 function monthSummaryHTML(m) {
+  if (!m) return '<p class="hint">No data for this month.</p>';
   return '<div class="health-info">' +
     '<div class="row"><span>Working days</span><span>' + m.working + "</span></div>" +
     '<div class="row"><span>Full days</span><span>' + m.full + "</span></div>" +
@@ -1375,7 +1421,7 @@ function renderInsights() {
   const ir = internshipRange();
   const allStats = computeStats(ir.start, todayISO());
 
-  // ---- Attendance trend ----
+  /* ---------- Attendance trend ---------- */
   let trendPoints = [], trendTitle = "Attendance trend";
   if (months.length > 1) {
     trendPoints = months.map(m => ({
@@ -1384,10 +1430,9 @@ function renderInsights() {
       lines: [["Attendance", m.percent.toFixed(1) + "%"], ["Full days", m.full], ["Half days", m.half], ["Leave", m.leave], ["Absent", m.absent], ["Pending", m.pending]]
     }));
   } else {
-    // daily cumulative
     let credit = 0, work = 0;
     for (const d of eachDay(from, to)) {
-      if (!isWorkingDay(d)) continue;
+      if (!isWorkingDay(d) || isHoliday(d)) continue;
       const rec = getRecord(d); const st = statusFor(d, rec);
       work++;
       if (st === "Full Day") credit += 1;
@@ -1409,10 +1454,10 @@ function renderInsights() {
     else trendSummary = "Your attendance dropped by " + Math.abs(delta).toFixed(1) + " percentage points over this period.";
   }
 
-  // ---- Working time (daily) ----
+  /* ---------- Working time ---------- */
   const workPoints = [];
   for (const d of eachDay(from, to)) {
-    if (!isWorkingDay(d)) continue;
+    if (!isWorkingDay(d) || isHoliday(d)) continue;
     const rec = getRecord(d);
     const m = workMinutes(rec);
     if (!m) continue;
@@ -1422,7 +1467,7 @@ function renderInsights() {
     });
   }
 
-  // ---- Check-in / check-out patterns ----
+  /* ---------- Check-in / check-out patterns ---------- */
   const inPoints = [], outPoints = [];
   for (const r of myRecords().slice().sort((a, b) => a.date.localeCompare(b.date))) {
     if (r.date < from || r.date > to) continue;
@@ -1439,7 +1484,7 @@ function renderInsights() {
   const avgOut = outPoints.length ? Math.round(outPoints.reduce((s, p) => s + p.value, 0) / outPoints.length) : null;
   const timeFmt = v => { let h = Math.floor(v / 60), m = Math.round(v % 60); const ap = h >= 12 ? "p" : "a"; h = h % 12 || 12; return h + (m ? ":" + pad2(m) : "") + ap; };
 
-  // ---- Breakdown ----
+  /* ---------- Breakdown ---------- */
   const bd = [
     { label: "Full Day", value: stats.full, color: "var(--success)" },
     { label: "Half Day", value: stats.half, color: "var(--half)" },
@@ -1449,17 +1494,13 @@ function renderInsights() {
   ];
   const bdMax = Math.max(1, ...bd.map(x => x.value));
 
-  // ---- Projection ----
-  const remainingWorkingDays = countWorkingDays(todayISO(), ir.end);
-  let projected = allStats.percent;
-  if (allStats.working + remainingWorkingDays > 0) {
-    projected = (allStats.credit / (allStats.working + remainingWorkingDays)) * 100;
-  }
+  /* ---------- Projection (corrected formula) ---------- */
+  const remainingWorkingDays = countWorkingDays(toISO(addDays(new Date(), 1)), ir.end);
+  const totalWorkingDays = allStats.working + remainingWorkingDays;
+  const projected = totalWorkingDays > 0 ? (allStats.credit / totalWorkingDays) * 100 : 0;
   const projStatus = projected >= state.config.requiredPercent + 2 ? { l: "ON TRACK", c: "pill-success" }
     : projected >= state.config.requiredPercent ? { l: "CAUTION", c: "pill-half" } : { l: "AT RISK", c: "pill-absent" };
-
-  const need = Math.ceil(remainingWorkingDays * (state.config.requiredPercent / 100));
-  const maxMissable = Math.max(0, Math.floor(allStats.credit - (state.config.requiredPercent / 100) * (allStats.working + remainingWorkingDays)));
+  const maxMissable = Math.max(0, Math.floor(allStats.credit + remainingWorkingDays - (state.config.requiredPercent / 100) * totalWorkingDays));
 
   el.innerHTML = `
   <div class="view-head"><div><h1>Insights</h1><div class="sub">${esc(fmtShort(from))} → ${esc(fmtShort(to))}</div></div></div>
@@ -1577,7 +1618,6 @@ function renderInsights() {
   </div>
   `;
 
-  // Draw charts
   const req = state.config.requiredPercent;
   if (trendPoints.length >= 2) {
     chartLine($("#cTrend"), {
@@ -1595,7 +1635,7 @@ function renderInsights() {
         label: monthLabel(m.key), value: +m.percent.toFixed(1), title: monthLabel(m.key),
         lines: [["Attendance", m.percent.toFixed(1) + "%"], ["Full days", m.full], ["Half days", m.half], ["Pending", m.pending]]
       })),
-      height: 200, max: 100, formatY: v => v + "%", color: cssVar("--primary")
+      height: 200, formatY: v => v + "%", color: cssVar("--primary")
     });
     chartBar($("#cHours"), {
       points: months.map(m => ({
@@ -1618,16 +1658,10 @@ function renderInsights() {
   const ea = $("#emptyAdd"); if (ea) ea.addEventListener("click", () => openRecordSheet(todayISO()));
 }
 
-function countWorkingDays(from, to) {
-  if (to < from) return 0;
-  let n = 0;
-  for (const d of eachDay(from, to)) if (isWorkingDay(d) && !isHoliday(d)) n++;
-  return n;
-}
-
 /* =========================================================================
    VIEW: RECORDS
    ========================================================================= */
+let recSearchTimer = null;
 function renderRecords() {
   const el = $("#view-records");
   const tabs = [["biometric", "Biometric"], ["learning", "Learning"], ["referrals", "Referrals"], ["notes", "Notes"]];
@@ -1635,10 +1669,11 @@ function renderRecords() {
 
   let body = "";
   if (state.recTab === "biometric") {
+    const q = state.search.toLowerCase();
     const filtered = recs.filter(r => {
       const st = statusFor(r.date, r);
       if (state.statusFilter !== "all" && st !== state.statusFilter) return false;
-      if (state.search && !(r.date + " " + (r.remarks || "") + " " + (r.learning || "")).toLowerCase().includes(state.search.toLowerCase())) return false;
+      if (q && !(r.date + " " + (r.remarks || "") + " " + (r.learning || "")).toLowerCase().includes(q)) return false;
       return true;
     });
     body = filtered.length ? filtered.map(r => {
@@ -1698,8 +1733,20 @@ function renderRecords() {
   $$("#view-records .seg button").forEach(b => b.addEventListener("click", () => { state.recTab = b.dataset.tab; renderRecords(); }));
   $$("#view-records [data-date]").forEach(b => b.addEventListener("click", () => openDaySheet(b.dataset.date)));
   $$("#view-records [data-filter]").forEach(b => b.addEventListener("click", () => { state.statusFilter = b.dataset.filter; renderRecords(); }));
+
   const srch = $("#recSearch");
-  if (srch) srch.addEventListener("input", e => { state.search = e.target.value; const pos = e.target.selectionStart; renderRecords(); const n = $("#recSearch"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } });
+  if (srch) {
+    srch.addEventListener("input", e => {
+      state.search = e.target.value;
+      clearTimeout(recSearchTimer);
+      recSearchTimer = setTimeout(() => {
+        const pos = state.search.length;
+        renderRecords();
+        const n = $("#recSearch");
+        if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+      }, 180);
+    });
+  }
   const rA = $("#recAdd"); if (rA) rA.addEventListener("click", () => openRecordSheet(todayISO()));
   const rL = $("#recLearn"); if (rL) rL.addEventListener("click", openLearningSheet);
   const rR = $("#recRef"); if (rR) rR.addEventListener("click", openReferralSheet);
@@ -1707,7 +1754,7 @@ function renderRecords() {
   $("#btnCsv").addEventListener("click", exportCSV);
   $("#btnBackup").addEventListener("click", exportBackup);
   $("#btnCert").addEventListener("click", openCertificate);
-  $("#btnRestore").addEventListener("click", () => $("#restoreInput").click());
+  $("#btnRestore").addEventListener("click", () => { const f = $("#restoreInput"); if (f) f.click(); });
 }
 
 /* =========================================================================
@@ -1718,6 +1765,8 @@ function renderSettings() {
   const c = state.config;
   const theme = c.theme || "system";
   const hol = Object.keys(state.holidays).sort();
+  const notifSupported = "Notification" in window;
+  const notifGranted = notifSupported && Notification.permission === "granted";
 
   el.innerHTML = `
   <div class="view-head"><div><h1>Settings</h1><div class="sub">Everything is stored on this device only</div></div></div>
@@ -1727,6 +1776,7 @@ function renderSettings() {
     <div class="field"><label for="sName">Your name</label><input type="text" id="sName" value="${esc(state.profile.name)}" placeholder="Dr. Raj"></div>
     <div class="field"><label for="sOrg">Organization</label><input type="text" id="sOrg" value="${esc(c.organization)}" placeholder="Medical College"></div>
     <div class="field"><label for="sDept">Department</label><input type="text" id="sDept" value="${esc(c.department)}" placeholder="General Medicine"></div>
+    <p class="hint">Changing your name renames your existing records so they stay visible.</p>
   </div>
 
   <div class="card">
@@ -1767,10 +1817,22 @@ function renderSettings() {
       ${hol.length ? hol.map(d => '<div class="ref-item"><span class="pill pill-holiday">' + esc(fmtShort(d)) + '</span><span style="flex:1">' + esc(state.holidays[d]) + '</span><button class="btn btn-sm btn-danger" data-delhol="' + d + '">Remove</button></div>').join("") : '<p class="hint">No holidays configured.</p>'}
     </div>
     <div class="grid-2" style="margin-top:12px">
-      <input type="date" id="holDate" style="padding:11px 13px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2)">
-      <input type="text" id="holName" placeholder="Holiday name" style="padding:11px 13px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2)">
+      <input type="date" id="holDate" aria-label="Holiday date" style="padding:11px 13px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2)">
+      <input type="text" id="holName" aria-label="Holiday name" placeholder="Holiday name" style="padding:11px 13px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2)">
     </div>
     <button class="btn btn-sm btn-block" style="margin-top:9px" id="addHol">Add holiday</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Notifications</h3></div>
+    ${notifSupported ? `
+      <div class="switch-row">
+        <div>
+          <div class="t">Daily reminders</div>
+          <div class="d">${notifGranted ? "Reminders are enabled" : "Requires permission from your browser"}</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="notifyToggle" ${c.notifyEnabled && notifGranted ? "checked" : ""}><i></i></label>
+      </div>` : '<p class="hint">This browser does not support notifications.</p>'}
   </div>
 
   <div class="card">
@@ -1790,7 +1852,7 @@ function renderSettings() {
       <button class="btn btn-sm" id="setCsvImport">Import CSV</button>
     </div>
     <div class="divider"></div>
-    <button class="btn btn-danger btn-block" id="clearAll">Erase all local data</button>
+    <button class="btn btn-danger btn-block" id="clearAll">Erase InternDoc data</button>
   </div>
 
   <div class="card">
@@ -1806,14 +1868,27 @@ function renderSettings() {
 
   <div class="card">
     <div class="card-head"><h3>About</h3></div>
-    <p class="hint">InternDoc v4.0 — a personal biometric attendance companion made by interns, for interns.<br>Original concept by Dr. Pratik Jadhao.</p>
+    <p class="hint">InternDoc v4.1 — a personal biometric attendance companion made by interns, for interns.<br>Original concept by Dr. Pratik Jadhao.</p>
   </div>
 
   <input type="file" id="restoreInput" accept=".json" style="display:none">
   <input type="file" id="csvInput" accept=".csv" style="display:none">
   `;
 
-  $("#sName").addEventListener("change", e => { state.profile.name = e.target.value.trim(); saveProfile(); toast("Profile saved"); renderSettings(); });
+  $("#sName").addEventListener("change", e => {
+    const oldName = state.profile.name || "";
+    const newName = e.target.value.trim();
+    if (oldName === newName) return;
+    state.profile.name = newName;
+    if (oldName) {
+      state.records.forEach(r => { if ((r.name || "") === oldName) r.name = newName; });
+    } else {
+      state.records.forEach(r => { if (!r.name) r.name = newName; });
+    }
+    saveProfile(); saveRecords();
+    toast("Profile saved");
+    renderSettings();
+  });
   $("#sOrg").addEventListener("change", e => { state.config.organization = e.target.value.trim(); saveConfig(); toast("Saved"); });
   $("#sDept").addEventListener("change", e => { state.config.department = e.target.value.trim(); saveConfig(); toast("Saved"); });
   $("#sStart").addEventListener("change", e => { state.config.internshipStart = e.target.value; saveConfig(); toast("Start date saved"); });
@@ -1841,6 +1916,22 @@ function renderSettings() {
     state.holidays[d] = n; saveHolidays(); renderSettings(); toast("Holiday added");
   });
 
+  const nTog = $("#notifyToggle");
+  if (nTog) nTog.addEventListener("change", e => {
+    if (e.target.checked) {
+      Notification.requestPermission().then(perm => {
+        if (perm === "granted") {
+          state.config.notifyEnabled = true; saveConfig(); scheduleReminders(); toast("Reminders enabled");
+        } else {
+          state.config.notifyEnabled = false; saveConfig(); toast("Notifications blocked", true);
+        }
+        renderSettings();
+      });
+    } else {
+      state.config.notifyEnabled = false; saveConfig(); toast("Reminders disabled"); renderSettings();
+    }
+  });
+
   $("#setBackup").addEventListener("click", exportBackup);
   $("#setRestore").addEventListener("click", () => $("#restoreInput").click());
   $("#setCsv").addEventListener("click", exportCSV);
@@ -1849,11 +1940,15 @@ function renderSettings() {
   $("#csvInput").addEventListener("change", e => { if (e.target.files[0]) importCSV(e.target.files[0]); e.target.value = ""; });
   $("#clearAll").addEventListener("click", () => {
     openSheet({
-      title: "Erase all local data?",
-      body: '<p class="hint">This permanently deletes every record, holiday and setting stored on this device. This cannot be undone. Export a backup first if you are unsure.</p>',
+      title: "Erase InternDoc data?",
+      body: '<p class="hint">This permanently deletes every InternDoc record, holiday and setting stored on this device. Other apps on this browser are not affected. This cannot be undone — export a backup first if you are unsure.</p>',
       actions: [
         { label: "Cancel", onClick: closeSheet },
-        { label: "Erase everything", class: "btn-danger", onClick: () => { localStorage.clear(); closeSheet(); setTimeout(() => location.reload(), 300); } }
+        { label: "Erase InternDoc data", class: "btn-danger", onClick: () => {
+          Object.values(KEYS).forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+          closeSheet();
+          setTimeout(() => location.reload(), 300);
+        } }
       ]
     });
   });
@@ -1865,11 +1960,12 @@ function renderSettings() {
 function openRecordSheet(iso) {
   const existing = getRecord(iso);
   const isNew = !existing;
-  const disabled = isNew ? "" : "disabled";
+  let pendingPhoto = existing ? existing.photo : null;
+
   openSheet({
     title: isNew ? "Add biometric record" : "Edit record",
     body: `
-      <div class="field"><label for="fDate">Date</label><input type="date" id="fDate" value="${esc(iso)}" ${disabled} max="${todayISO()}"></div>
+      <div class="field"><label for="fDate">Date</label><input type="date" id="fDate" value="${esc(iso)}" ${isNew ? "" : "disabled"} max="${todayISO()}"></div>
       <div class="grid-2">
         <div class="field"><label for="fIn">Check-in</label><input type="time" id="fIn" value="${esc(existing ? existing.checkIn : "")}"></div>
         <div class="field"><label for="fOut">Check-out</label><input type="time" id="fOut" value="${esc(existing ? existing.checkOut : "")}"></div>
@@ -1877,30 +1973,31 @@ function openRecordSheet(iso) {
       <div class="field"><label for="fNote">Note (optional)</label><input type="text" id="fNote" value="${esc(existing ? existing.remarks : "")}" placeholder="Any detail about this day"></div>
       <div class="field"><label for="fPhoto">Biometric slip / photo (optional)</label><input type="file" id="fPhoto" accept="image/*"></div>
       <div id="fPreview">${existing && existing.photo ? '<img src="' + existing.photo + '" alt="Attached slip" style="max-width:110px;border-radius:12px;border:1px solid var(--border)">' : ""}</div>
-      <div class="hint" id="fHint">Full day requires check-in between ${fmt12(state.config.inStart)}–${fmt12(state.config.inEnd)} and check-out between ${fmt12(state.config.outStart)}–${fmt12(state.config.outEnd)}.</div>
+      <div class="hint" id="fHint">Full day requires check-in between ${fmt12(state.config.inStart)}–${fmt12(state.config.inEnd)} and check-out between ${fmt12(state.config.outStart)}–${fmt12(state.config.outEnd)}.${existing && (existing.isLeave || existing.isAbsent) ? " Saving with times will clear the leave/absent mark." : ""}</div>
     `,
     actions: [
       ...(isNew ? [] : [{ label: "Delete", class: "btn-danger", onClick: () => confirmDelete(iso) }]),
-      { label: isNew ? "Save record" : "Save changes", class: "btn-primary", onClick: () => saveRecord(iso, isNew) }
+      { label: isNew ? "Save record" : "Save changes", class: "btn-primary", onClick: () => saveRecord(iso, isNew, () => pendingPhoto) }
     ]
   });
-  let photo = existing ? existing.photo : null;
+
   $("#fPhoto").addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = ev => { photo = ev.target.result; $("#fPreview").innerHTML = '<img src="' + photo + '" alt="Attached slip" style="max-width:110px;border-radius:12px;border:1px solid var(--border)">'; };
+    r.onload = ev => {
+      pendingPhoto = ev.target.result;
+      $("#fPreview").innerHTML = '<img src="' + pendingPhoto + '" alt="Attached slip" style="max-width:110px;border-radius:12px;border:1px solid var(--border)">';
+    };
     r.readAsDataURL(f);
   });
-  $("#fPhoto")._getPhoto = () => photo;
-  window.__pendingPhoto = () => photo;
 }
 
-function saveRecord(iso, isNew) {
+function saveRecord(iso, isNew, getPhoto) {
   const d = $("#fDate").value || iso;
   const inT = $("#fIn").value;
   const outT = $("#fOut").value;
   const note = $("#fNote").value.trim();
-  const photo = window.__pendingPhoto ? window.__pendingPhoto() : null;
+  const photo = getPhoto ? getPhoto() : null;
 
   const hint = $("#fHint");
   const fail = msg => { hint.className = "hint error"; hint.textContent = msg; };
@@ -1930,6 +2027,8 @@ function saveRecord(iso, isNew) {
       rec.audit.push({ at: new Date().toISOString(), changes, reason: "Manual correction" });
     }
     rec.checkIn = inT; rec.checkOut = outT; rec.remarks = note;
+    /* If the user is providing actual biometric times, the leave/absent flag no longer applies. */
+    if (inT || outT) { rec.isLeave = false; rec.isAbsent = false; rec.leaveReason = ""; }
     if (photo) rec.photo = photo;
     rec.updatedAt = new Date().toISOString();
   }
@@ -1982,39 +2081,57 @@ function openCheckoutSheet() {
 function openLearningSheet() {
   const iso = todayISO();
   const rec = getRecord(iso);
+  let rating = rec ? rec.rating : 0;
   openSheet({
     title: "Learning entry",
     body: `<div class="field"><label for="lText">What did you learn today?</label>
       <textarea id="lText" placeholder="e.g. Performed a lumbar puncture under supervision">${esc(rec ? rec.learning : "")}</textarea></div>
       <div class="field"><label>Rate your day</label><div class="stars" id="lStars">
-        ${[1, 2, 3, 4, 5].map(i => '<button data-v="' + i + '" class="' + (rec && rec.rating >= i ? "on" : "") + '">★</button>').join("")}
+        ${[1, 2, 3, 4, 5].map(i => '<button data-v="' + i + '" class="' + (rating >= i ? "on" : "") + '">★</button>').join("")}
       </div></div>`,
     actions: [{ label: "Save", class: "btn-primary", onClick: () => {
       const r = ensureRecord(iso);
       r.learning = $("#lText").value.trim();
-      r.rating = Number($("#lStars").dataset.v || 0) || (rec ? rec.rating : 0) || 0;
+      r.rating = rating || 0;
       saveRecords(); closeSheet(); refresh(); toast("Learning saved");
     } }]
   });
-  let rating = rec ? rec.rating : 0;
   const stars = $("#lStars");
-  stars.dataset.v = rating;
   $$("#lStars button").forEach(b => b.addEventListener("click", () => {
-    rating = Number(b.dataset.v); stars.dataset.v = rating;
+    rating = Number(b.dataset.v);
     $$("#lStars button").forEach(x => x.classList.toggle("on", Number(x.dataset.v) <= rating));
   }));
 }
 
 function openReferralSheet() {
   const iso = todayISO();
-  const rec = getRecord(iso);
-  const refs = rec ? (rec.referrals || []) : [];
   const depts = ["Cardiology","Neurology","Pulmonology","General Medicine","General Surgery","Pediatrics","Obstetrics & Gynecology","Orthopedics","Ophthalmology","ENT","Dermatology","Psychiatry","Radiology","Pathology","Microbiology","Hematology","Nephrology","Cardiac Surgery","Neurosurgery","Dentistry","Oncology","Emergency Medicine","Anesthesiology","Urology","Endocrinology","Gastroenterology"];
   const statuses = ["Pending","Accepted","Rejected","Referred to Senior","On Hold","Completed","Transferred"];
+
+  const renderList = () => {
+    const r = getRecord(iso);
+    const refs = r ? (r.referrals || []) : [];
+    const list = $("#refList");
+    if (!list) return;
+    list.innerHTML = refs.length ? refs.map((ref, i) => `
+      <div class="ref-item">
+        <span style="flex:1"><b>${esc(ref.ipd || "")}</b> ${esc(ref.patient || "")}
+          <div style="font-size:11.5px;color:var(--text-3)">${esc(ref.dept || "—")}</div>
+        </span>
+        <span class="pill ${ref.done ? "pill-success" : "pill-pending"}">${esc(ref.status || "Pending")}</span>
+        <button class="btn btn-sm btn-danger" data-delref="${i}" aria-label="Remove referral">✕</button>
+      </div>`).join("") : '<p class="hint">No referrals added today.</p>';
+    $$("#refList [data-delref]").forEach(b => b.addEventListener("click", () => {
+      const r2 = getRecord(iso); if (!r2) return;
+      r2.referrals.splice(Number(b.dataset.delref), 1);
+      saveRecords(); renderList(); refresh();
+    }));
+  };
+
   openSheet({
     title: "Referrals",
     body: `
-      <div id="refList">${refs.length ? refs.map((r, i) => refRowHTML(r, i)).join("") : '<p class="hint">No referrals added today.</p>'}</div>
+      <div id="refList"></div>
       <div class="divider"></div>
       <div class="grid-2">
         <div class="field"><label for="rIpd">IPD / OPD number</label><input type="text" id="rIpd" placeholder="Optional"></div>
@@ -2024,9 +2141,10 @@ function openReferralSheet() {
       <div class="field"><label for="rStatus">Status</label><select id="rStatus">${statuses.map(s => "<option>" + s + "</option>").join("")}</select></div>
       <div class="switch-row"><div><div class="t">Marked done</div><div class="d">Completed and closed</div></div>
         <label class="switch"><input type="checkbox" id="rDone"><i></i></label></div>
-      <div class="hint">Avoid storing unnecessary patient-identifying information.</div>
+      <div class="hint">Add multiple referrals in one session — the sheet stays open. Avoid storing unnecessary patient-identifying information.</div>
     `,
     actions: [
+      { label: "Done", onClick: closeSheet },
       { label: "Add referral", class: "btn-primary", onClick: () => {
         const ipd = $("#rIpd").value.trim(), patient = $("#rPat").value.trim();
         const dept = $("#rDept").value, status = $("#rStatus").value, done = $("#rDone").checked;
@@ -2034,15 +2152,16 @@ function openReferralSheet() {
         const r = ensureRecord(iso);
         if (!r.referrals) r.referrals = [];
         r.referrals.push({ ipd, patient, dept, status, done });
-        saveRecords(); closeSheet(); refresh(); toast("Referral added");
+        saveRecords();
+        $("#rIpd").value = ""; $("#rPat").value = "";
+        $("#rDept").value = ""; $("#rStatus").value = "Pending"; $("#rDone").checked = false;
+        renderList();
+        refresh();
+        toast("Referral added");
       } }
     ]
   });
-}
-function refRowHTML(r, i) {
-  return '<div class="ref-item"><span style="flex:1"><b>' + esc(r.ipd || "") + "</b> " + esc(r.patient || "") +
-    '<div style="font-size:11.5px;color:var(--text-3)">' + esc(r.dept || "—") + "</div></span>" +
-    '<span class="pill ' + (r.done ? "pill-success" : "pill-pending") + '">' + esc(r.status || "Pending") + "</span></div>";
+  renderList();
 }
 
 function openRemarkSheet() {
@@ -2127,6 +2246,12 @@ function markAbsent(iso) {
   saveRecords(); closeSheet(); refresh(); toast("Marked absent");
 }
 
+function refRowHTML(r) {
+  return '<div class="ref-item"><span style="flex:1"><b>' + esc(r.ipd || "") + "</b> " + esc(r.patient || "") +
+    '<div style="font-size:11.5px;color:var(--text-3)">' + esc(r.dept || "—") + "</div></span>" +
+    '<span class="pill ' + (r.done ? "pill-success" : "pill-pending") + '">' + esc(r.status || "Pending") + "</span></div>";
+}
+
 /* =========================================================================
    QUICK ADD
    ========================================================================= */
@@ -2167,25 +2292,26 @@ function download(filename, text, type) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
 }
 
+function csvCell(s) { return '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"'; }
+
 function exportCSV() {
   const recs = myRecords().slice().sort((a, b) => a.date.localeCompare(b.date));
   const head = ["Date","Status","CheckIn","CheckOut","WorkingMinutes","LeaveUsed","Learning","Referrals","Rating","Remarks"];
-  const rows = [head.join(",")];
+  const rows = [head.map(csvCell).join(",")];
   recs.forEach(r => {
     const refs = (r.referrals || []).map(x => [x.ipd, x.patient, x.dept, x.status, x.done ? "Done" : "Pending"].join("|")).join("; ");
     rows.push([
       r.date, statusFor(r.date, r), r.checkIn || "", r.checkOut || "", workMinutes(r),
-      leaveCost(r.date, r), csvCell(r.learning), csvCell(refs), r.rating || 0, csvCell(r.remarks)
-    ].join(","));
+      leaveCost(r.date, r), r.learning || "", refs, r.rating || 0, r.remarks || ""
+    ].map(csvCell).join(","));
   });
   download("interndoc_attendance_" + todayISO() + ".csv", rows.join("\n"), "text/csv");
   toast("CSV exported");
 }
-function csvCell(s) { return '"' + String(s || "").replace(/"/g, '""') + '"'; }
 
 function exportBackup() {
   const payload = {
-    app: "InternDoc", version: 4,
+    app: "InternDoc", version: 4.1,
     exportedAt: new Date().toISOString(),
     profile: state.profile, config: state.config,
     holidays: state.holidays, records: state.records, streak: state.streak
@@ -2204,14 +2330,17 @@ function importBackup(file) {
     openSheet({
       title: "Restore backup?",
       body: '<p class="hint">This backup contains <b>' + data.records.length + "</b> records" +
-        (invalid.length ? ' and <b style="color:var(--danger)">' + invalid.length + " invalid entries</b> which will be skipped" : "") +
+        (invalid.length ? ' and <b style="color:var(--absent)">' + invalid.length + " invalid entries</b> which will be skipped" : "") +
         ".<br><br>Restoring will <b>replace</b> the data currently on this device. Your existing records are safe until you confirm.</p>",
       actions: [
         { label: "Cancel", onClick: closeSheet },
         { label: "Replace data", class: "btn-danger", onClick: () => {
           state.records = data.records.filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date)).map(normaliseRecord);
           if (data.profile) state.profile = Object.assign({ name: "", organization: "", department: "" }, data.profile);
-          if (data.config) state.config = Object.assign({}, DEFAULT_CONFIG, data.config);
+          if (data.config) {
+            state.config = Object.assign({}, DEFAULT_CONFIG, data.config);
+            if (!Array.isArray(state.config.workDays)) state.config.workDays = DEFAULT_CONFIG.workDays.slice();
+          }
           if (data.holidays) state.holidays = data.holidays;
           if (data.streak) state.streak = data.streak;
           saveRecords(); saveProfile(); saveConfig(); saveHolidays(); saveStreak();
@@ -2231,13 +2360,16 @@ function importCSV(file) {
     const lines = text.split("\n").filter(l => l.trim());
     if (lines.length < 2) return toast("That CSV appears to be empty.", true);
     const added = []; let skipped = 0;
+    const name = state.profile.name || "";
+    const existing = new Set(state.records.filter(r => (r.name || "") === name).map(r => r.date));
     for (let i = 1; i < lines.length; i++) {
       const parts = splitCSVLine(lines[i]);
       const date = (parts[0] || "").trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { skipped++; continue; }
-      if (getRecord(date)) { skipped++; continue; }
+      if (existing.has(date)) { skipped++; continue; }
+      existing.add(date);
       added.push(normaliseRecord({
-        id: uid(), date, name: state.profile.name || "",
+        id: uid(), date, name,
         checkIn: (parts[2] || "").trim(), checkOut: (parts[3] || "").trim(),
         learning: parts[6] || "", remarks: parts[9] || "",
         rating: parseInt(parts[8], 10) || 0
@@ -2335,8 +2467,11 @@ function applyTheme() {
   const t = state.config.theme || "system";
   const dark = t === "dark" || (t === "system" && mq.matches);
   document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? "#0a1120" : "#2563eb");
 }
-mq.addEventListener && mq.addEventListener("change", () => { if ((state.config.theme || "system") === "system") applyTheme(); });
+if (mq.addEventListener) mq.addEventListener("change", () => { if ((state.config.theme || "system") === "system") applyTheme(); });
+else if (mq.addListener) mq.addListener(() => { if ((state.config.theme || "system") === "system") applyTheme(); });
 
 /* =========================================================================
    NAVIGATION
@@ -2366,7 +2501,7 @@ function go(view) {
   $$(".view").forEach(v => v.classList.toggle("active", v.dataset.view === view));
   updateNavState();
   renderView(view);
-  window.scrollTo({ top: 0, behavior: "auto" });
+  window.scrollTo(0, 0);
 }
 function renderView(view) {
   if (view === "home") renderHome();
@@ -2393,42 +2528,48 @@ function init() {
   $("#sheetBackdrop").addEventListener("click", closeSheet);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
-  // Redraw charts on resize (debounced)
+  /* Restore hidden file inputs used from the Records view. */
+  if (!$("#restoreInput")) {
+    const ri = document.createElement("input"); ri.type = "file"; ri.id = "restoreInput"; ri.accept = ".json"; ri.style.display = "none";
+    ri.addEventListener("change", e => { if (e.target.files[0]) importBackup(e.target.files[0]); e.target.value = ""; });
+    document.body.appendChild(ri);
+  }
+
   let rt = null;
   window.addEventListener("resize", () => {
     clearTimeout(rt);
     rt = setTimeout(() => { if (state.view === "insights" || state.view === "home") refresh(); }, 220);
   });
 
-  // Daily rollover check
   let day = todayISO();
   setInterval(() => {
     const now = todayISO();
     if (now !== day) { day = now; refresh(); }
   }, 60000);
 
-  // Reminder notifications (opt-in)
-  if ("Notification" in window && Notification.permission === "granted") {
+  if (state.config.notifyEnabled && "Notification" in window && Notification.permission === "granted") {
     scheduleReminders();
   }
 }
 
+let reminderTimer = null;
 function scheduleReminders() {
+  if (reminderTimer) clearTimeout(reminderTimer);
   const now = new Date();
-  const fire = (h, m, title, body) => {
-    const t = new Date();
-    t.setHours(h, m, 0, 0);
-    if (t <= now) t.setDate(t.getDate() + 1);
-    const wait = t - now;
-    setTimeout(() => {
-      if (document.hidden && Notification.permission === "granted") {
-        new Notification(title, { body: body });
-      }
-      scheduleReminders();
-    }, Math.min(wait, 2147483000));
-  };
-  fire(8, 40, "InternDoc", "Remember to log your check-in time.");
-  fire(12, 25, "InternDoc", "Remember to log your check-out time.");
+  const targets = [];
+  const morning = new Date(); morning.setHours(8, 40, 0, 0);
+  const afternoon = new Date(); afternoon.setHours(12, 25, 0, 0);
+  if (morning > now) targets.push([morning, "InternDoc", "Remember to log your check-in time."]);
+  else { const t = new Date(morning); t.setDate(t.getDate() + 1); targets.push([t, "InternDoc", "Remember to log your check-in time."]); }
+  if (afternoon > now) targets.push([afternoon, "InternDoc", "Remember to log your check-out time."]);
+  else { const t = new Date(afternoon); t.setDate(t.getDate() + 1); targets.push([t, "InternDoc", "Remember to log your check-out time."]); }
+  targets.sort((a, b) => a[0] - b[0]);
+  const [when, title, body] = targets[0];
+  const wait = Math.min(when - now, 2147483000);
+  reminderTimer = setTimeout(() => {
+    try { if (document.hidden && Notification.permission === "granted") new Notification(title, { body }); } catch (e) {}
+    scheduleReminders();
+  }, wait);
 }
 
 init();
